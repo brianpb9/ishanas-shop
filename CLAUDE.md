@@ -67,9 +67,11 @@ animations (never a stable frame). React state updates are async, so `await` a
 - **Economy / `RARITY`:** tiered prices — common ~120, rare ~900, epic ~5K,
   legendary ~30K, **dream** (aspirational) 100K–1M with per-item `cost` override.
   `money(n)` formats `5K`/`1M`. Coin earning ≈ `14 + level*3` × multipliers.
-- **Dress-Up Try-On:** tapping an unowned item previews it on the avatar (items
-  are tappable even if unaffordable — pass `noDisable` to `ItemGrid`); a "Buy"
-  bar confirms purchase.
+- **Dress-Up Try-On (affordability-gated):** owned → wear; affordable-not-owned
+  → previews on the avatar + a "Buy" bar; **unaffordable → locked** (disabled,
+  shows 🔒 + price, no try-on) so the urge to save up is preserved. `ItemGrid`
+  disables `!owned && !afford` by default; `noDisable` exists but is intentionally
+  NOT used on Dress-Up.
 - **Sounds (`useSounds`):** correct/wrong/pop/coin/gulp/upgrade/mystery/rare/
   fanfare/tick + plop (scoop), ding (order done), yay (customer), sparkle.
 - **Replace Ishana's art:** set `ISHANA_FACE_SRC` to a square head image;
