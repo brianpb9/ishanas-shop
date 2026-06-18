@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Ishana's Shop 🍦</title>
     <!-- Self-contained: works by double-clicking OR via the server. The game
          (IshanaShop.jsx) is inlined below and compiled with Babel's classic
@@ -11,7 +11,11 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <style> html, body, #root { height: 100%; margin: 0; } body { -webkit-tap-highlight-color: transparent; } </style>
+    <style>
+      html, body, #root { height: 100%; margin: 0; }
+      html, body { overflow: hidden; position: fixed; width: 100%; overscroll-behavior: none; touch-action: manipulation; }
+      body { -webkit-tap-highlight-color: transparent; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
@@ -33,7 +37,7 @@
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 const ISHANA_FACE_SRC = "ishana_face.png";
-const SAVE_KEY = "ishana_shop_save_v4";
+const SAVE_KEY = "ishana_shop_save_v5";
 
 /* ============================== CORE DATA ================================ */
 const FLAVORS = {
@@ -67,15 +71,27 @@ const WORLDS = [
   { name: "Royal Dessert Kingdom", sky: ["#ffe9a8", "#fff7dd"], accent: "#ffb300", out: "🏰", sun: "💎" },
 ];
 
-const REGULARS = ["owl", "giraffe", "cat"];
+const REGULARS = ["bear", "penguin", "cat", "frog"];
 const RARES = {
-  unicorn: { emoji: "🦄", name: "Unicorn", unlockLevel: 5 }, robotpanda: { emoji: "🐼", name: "Robot Panda", unlockLevel: 12 },
-  dragon: { emoji: "🐲", name: "Baby Dragon", unlockLevel: 18 }, dino: { emoji: "🦖", name: "Dino Kid", unlockLevel: 25 }, alienbunny: { emoji: "👽", name: "Alien Bunny", unlockLevel: 32 },
+  rabbit: { emoji: "🐰", name: "Bunny", unlockLevel: 4 }, elephant: { emoji: "🐘", name: "Ellie", unlockLevel: 8 },
+  panda: { emoji: "🐼", name: "Panda", unlockLevel: 12 }, fox: { emoji: "🦊", name: "Foxy", unlockLevel: 16 },
+  owl: { emoji: "🦉", name: "Professor Owl", unlockLevel: 22 }, bird: { emoji: "🐦", name: "Birdie", unlockLevel: 28 },
 };
 const RARE_KEYS = Object.keys(RARES);
-const CUSTOMER_INFO = { owl: { emoji: "🦉", name: "Nerd Owl" }, giraffe: { emoji: "🦒", name: "Mechanic Giraffe" }, cat: { emoji: "🐱", name: "Lazy Cat" }, ...Object.fromEntries(RARE_KEYS.map((k) => [k, { emoji: RARES[k].emoji, name: RARES[k].name }])) };
+const CUSTOMER_INFO = {
+  bear: { emoji: "🐻", name: "Bobo Bear" }, penguin: { emoji: "🐧", name: "Pip Penguin" }, cat: { emoji: "🐱", name: "Kiki Cat" }, frog: { emoji: "🐸", name: "Freddy Frog" },
+  ...Object.fromEntries(RARE_KEYS.map((k) => [k, { emoji: RARES[k].emoji, name: RARES[k].name }])),
+};
 
-const RARITY = { common: { name: "Common", color: "#9aa3ad", cost: 30 }, rare: { name: "Rare", color: "#3aa0ff", cost: 90 }, epic: { name: "Epic", color: "#a06bff", cost: 200 }, legendary: { name: "Legendary", color: "#ffb300", cost: 600 } };
+const RARITY = {
+  common:    { name: "Common",    color: "#9aa3ad", cost: 120 },
+  rare:      { name: "Rare",      color: "#3aa0ff", cost: 900 },
+  epic:      { name: "Epic",      color: "#a06bff", cost: 5000 },
+  legendary: { name: "Legendary", color: "#ffb300", cost: 30000 },
+  dream:     { name: "Dream",     color: "#ff3fa0", cost: 100000 },
+};
+// Pretty price: 100000 -> "100K", 1000000 -> "1M"
+function money(n) { return n >= 1000000 ? (n / 1000000) + "M" : n >= 1000 ? Math.round(n / 100) / 10 + "K" : ("" + n); }
 
 /* Slot categories = single-select upgrades that restyle the shop. */
 const SLOT_KEYS = ["sign", "roof", "entrance", "window", "counter", "floor", "wall", "ceiling", "machine", "helper"];
@@ -228,6 +244,12 @@ const CATALOG = [
   it("panda", "pet", "Panda", "epic", { emoji: "🐼" }),
   it("unicorn", "pet", "Baby Unicorn", "epic", { emoji: "🦄" }),
   it("dragon", "pet", "Mini Dragon", "legendary", { emoji: "🐉" }),
+
+  /* ---- DREAM ITEMS (aspirational, super expensive) ---- */
+  it("giantunicorn", "decor", "Giant Unicorn Statue", "dream", { emoji: "🦄", cost: 100000 }),
+  it("rainbowcastle", "decor", "Rainbow Castle Shop", "dream", { emoji: "🏰", cost: 250000 }),
+  it("palace", "decor", "Ice Cream Palace", "dream", { emoji: "🍨", cost: 500000 }),
+  it("goldqueen", "dress", "Golden Queen Outfit", "dream", { color: "linear-gradient(135deg,#fff0a8,#ffd24d,#ffb300)", emoji: "👑", cost: 1000000 }),
 ];
 const ITEM = Object.fromEntries(CATALOG.map((i) => [i.id, i]));
 const byCat = (cat) => CATALOG.filter((i) => i.cat === cat);
@@ -275,11 +297,15 @@ function useSounds() {
     rare: () => { [660, 880, 1320].forEach((f, i) => tone(f, i * 0.09, 0.3, "triangle", 0.18)); tone(1760, 0.3, 0.4, "sine", 0.14); },
     fanfare: () => { [523, 587, 659, 784, 1046].forEach((f, i) => tone(f, i * 0.12, 0.3, "square", 0.15)); tone(1318, 0.6, 0.6, "triangle", 0.2); },
     tick: () => tone(1200, 0, 0.04, "square", 0.08),
+    plop: () => slide(520, 300, 0.1, "sine", 0.16),                                  // scoop dropped
+    ding: () => { tone(1318, 0, 0.16, "sine", 0.18); tone(1760, 0.08, 0.22, "sine", 0.16); }, // order done
+    yay: () => [784, 988, 1318].forEach((f, i) => tone(f, i * 0.07, 0.18, "triangle", 0.16)),  // customer happy
+    sparkle: () => [1568, 2093, 2637].forEach((f, i) => tone(f, i * 0.05, 0.14, "sine", 0.1)), // topping/magic
   }), []);
 }
 
 /* ============================== ISHANA ART =============================== */
-function IshanaPortrait({ size = 110, mood = "idle" }) {
+function IshanaPortrait({ size = 110, mood = "idle", cap = true }) {
   const eyes = mood === "cheer" ? "closed" : mood === "freeze" ? "wide" : mood === "proud" ? "wink" : "open";
   const mouth = mood === "cheer" || mood === "dance" ? "open" : mood === "freeze" ? "o" : "smile";
   const browY = mood === "freeze" ? 49 : 52;
@@ -293,12 +319,12 @@ function IshanaPortrait({ size = 110, mood = "idle" }) {
       <ellipse cx="60" cy="74" rx="33" ry="35" fill="#ffe0cf" />
       <ellipse cx="28" cy="76" rx="6" ry="9" fill="#ffe0cf" /><ellipse cx="92" cy="76" rx="6" ry="9" fill="#ffe0cf" />
       <path d="M27,64 Q26,42 60,40 Q94,42 93,64 Q86,54 76,57 Q72,46 60,48 Q48,46 44,57 Q34,54 27,64 Z" fill="#211a1f" />
-      <g>
+      {cap && (<g>
         <g clipPath="url(#capDome)">{Array.from({ length: 10 }).map((_, i) => <rect key={i} x={22 + i * 7.6} y="14" width="7.6" height="48" fill={i % 2 ? "#ffffff" : "#ff9ec4"} />)}</g>
         <path d="M22,58 Q22,20 60,18 Q98,20 98,58 Z" fill="none" stroke="#ff7eb3" strokeWidth="2" />
         <rect x="20" y="56" width="80" height="11" rx="5" fill="#fff" stroke="#ffb6d9" strokeWidth="2" />
         <path d="M55,16 L65,16 L60,30 Z" fill="#f0c27a" /><circle cx="60" cy="11" r="7" fill="#ff9ec4" /><circle cx="57" cy="9" r="2" fill="#fff" opacity="0.7" />
-      </g>
+      </g>)}
       {eyes !== "closed" && (<><path d={`M44,${browY} Q50,${browY - 3} 55,${browY}`} stroke="#5b3a29" strokeWidth="2.4" fill="none" strokeLinecap="round" /><path d={`M65,${browY} Q70,${browY - 3} 76,${browY}`} stroke="#5b3a29" strokeWidth="2.4" fill="none" strokeLinecap="round" /></>)}
       {eyes === "open" && (<><ellipse cx="49" cy="72" rx="6.5" ry="8.5" fill="#3a2a22" /><ellipse cx="71" cy="72" rx="6.5" ry="8.5" fill="#3a2a22" /><circle cx="51" cy="69" r="2.4" fill="#fff" /><circle cx="73" cy="69" r="2.4" fill="#fff" /></>)}
       {eyes === "wide" && (<><ellipse cx="49" cy="72" rx="7.5" ry="10" fill="#3a2a22" /><ellipse cx="71" cy="72" rx="7.5" ry="10" fill="#3a2a22" /><circle cx="51" cy="68" r="2.6" fill="#fff" /><circle cx="73" cy="68" r="2.6" fill="#fff" /></>)}
@@ -314,13 +340,13 @@ function IshanaPortrait({ size = 110, mood = "idle" }) {
     </svg>
   );
 }
-function IshanaFace({ size = 110, mood = "happy" }) {
+function IshanaFace({ size = 110, mood = "happy", cap = true }) {
   const [ok, setOk] = useState(true);
   const cls = mood === "cheer" ? "ishana-cheer" : mood === "dance" ? "ishana-dance" : mood === "freeze" ? "shiver" : "bob";
   return (
     <div className={"relative " + cls} style={{ width: size, height: size }} aria-label="Ishana">
       <img src={ISHANA_FACE_SRC} alt="" draggable={false} onLoad={() => setOk(true)} onError={() => setOk(false)} className="w-full h-full object-cover rounded-full border-4 border-white shadow-lg" style={{ display: ok ? "block" : "none" }} />
-      {!ok && <div className="w-full h-full flex items-center justify-center"><IshanaPortrait size={size} mood={mood} /></div>}
+      {!ok && <div className="w-full h-full flex items-center justify-center"><IshanaPortrait size={size} mood={mood} cap={cap} /></div>}
     </div>
   );
 }
@@ -361,12 +387,12 @@ function FullIshana({ equipped, pet, size = 128, mood = "idle" }) {
       <div className="absolute" style={{ right: W * 0.22, top: H * 0.45, width: W * 0.3, height: H * 0.055, background: skin, borderRadius: 20, transform: "rotate(-20deg)", transformOrigin: "right center", zIndex: 2 }} />
       <div className="absolute rounded-full" style={{ left: W * 0.4, top: H * 0.55, width: W * 0.11, height: W * 0.11, background: skin, zIndex: 2, boxShadow: "inset 0 -2px 3px rgba(0,0,0,0.08)" }} />
       <div className="absolute rounded-full" style={{ right: W * 0.4, top: H * 0.55, width: W * 0.11, height: W * 0.11, background: skin, zIndex: 2, boxShadow: "inset 0 -2px 3px rgba(0,0,0,0.08)" }} />
-      {/* head */}
-      <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 0, zIndex: 3 }}><IshanaFace size={head} mood={mood} /></div>
-      {/* hat + accessories */}
-      {hat && <div className="absolute left-1/2 -translate-x-1/2" style={{ top: -size * 0.16, zIndex: 4, fontSize: size * 0.4 }}>{hat.emoji}</div>}
-      {acc && acc.place === "head" && <div className="absolute left-1/2 -translate-x-1/2" style={{ top: -size * 0.1, zIndex: 5, fontSize: size * 0.32 }}>{acc.emoji}</div>}
-      {acc && acc.place === "face" && <div className="absolute left-1/2 -translate-x-1/2" style={{ top: size * 0.22, zIndex: 5, fontSize: size * 0.26 }}>{acc.emoji}</div>}
+      {/* head — built-in cap hidden when a hat is worn (no more double-cap) */}
+      <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 0, zIndex: 3 }}><IshanaFace size={head} mood={mood} cap={!hat} /></div>
+      {/* hat sits ON TOP of the head (not over the face); glasses over the eyes */}
+      {hat && <div className="absolute left-1/2 -translate-x-1/2 leading-none text-center" style={{ top: -size * 0.16, zIndex: 6, fontSize: size * 0.32 }}>{hat.emoji}</div>}
+      {acc && acc.place === "head" && <div className="absolute left-1/2 -translate-x-1/2 leading-none text-center" style={{ top: -size * 0.13, zIndex: 6, fontSize: size * 0.28 }}>{acc.emoji}</div>}
+      {acc && acc.place === "face" && <div className="absolute left-1/2 -translate-x-1/2 leading-none text-center" style={{ top: size * 0.17, zIndex: 6, fontSize: size * 0.22 }}>{acc.emoji}</div>}
       {acc && acc.place === "hand" && <div className="absolute" style={{ top: H * 0.5, right: W * 0.06, zIndex: 5, fontSize: size * 0.3 }}>{acc.emoji}</div>}
       {acc && acc.place === "side" && <div className="absolute" style={{ top: H * 0.46, left: W * 0.03, zIndex: 0, fontSize: size * 0.3 }}>{acc.emoji}</div>}
       {acc && acc.place === "neck" && <div className="absolute left-1/2 -translate-x-1/2" style={{ top: H * 0.36, zIndex: 5, fontSize: size * 0.24 }}>{acc.emoji}</div>}
@@ -389,83 +415,108 @@ function Cone({ scoops = [], size = 46, max = 99 }) {
   const shown = scoops.slice(-max);
   return (<div className="flex flex-col items-center justify-end"><div className="flex flex-col-reverse items-center" style={{ marginBottom: -size * 0.25 }}>{shown.map((s, i) => <div key={i} className="scoop-pop" style={{ marginBottom: i === 0 ? 0 : -size * 0.42, zIndex: shown.length - i }}><Scoop flavorKey={s} size={size} /></div>)}</div><div style={{ width: 0, height: 0, borderLeft: size * 0.42 + "px solid transparent", borderRight: size * 0.42 + "px solid transparent", borderTop: size * 1.2 + "px solid #e0a85a" }} /></div>);
 }
-function Owl({ state }) {
-  const Eye = () => <div className="rounded-full bg-white flex items-center justify-center" style={{ width: 42, height: 42, border: "3px solid #6b4bab" }}><div className={state === "freeze" ? "googly" : "owl-blink"} style={{ position: "relative", width: 22, height: 22, borderRadius: 99, background: "#3a2a22" }}><div style={{ position: "absolute", top: 4, left: 4, width: 7, height: 7, borderRadius: 99, background: "#fff" }} /></div></div>;
-  return (
-    <div className={"relative " + (state === "freeze" ? "shiver" : "bob")} style={{ width: 124, height: 130 }}>
-      <div className="absolute rounded-full" style={{ bottom: 0, left: 42, width: 14, height: 8, background: "#ffb938" }} />
-      <div className="absolute rounded-full" style={{ bottom: 0, right: 42, width: 14, height: 8, background: "#ffb938" }} />
-      <div className="absolute left-1/2 -translate-x-1/2 rounded-[46%]" style={{ bottom: 4, width: 108, height: 116, background: "linear-gradient(#caa6f7,#9b6bf0)" }} />
-      <div className="absolute rounded-[60%]" style={{ bottom: 22, left: 5, width: 22, height: 46, background: "#8a5fe0" }} />
-      <div className="absolute rounded-[60%]" style={{ bottom: 22, right: 5, width: 22, height: 46, background: "#8a5fe0" }} />
-      <div className="absolute left-1/2 -translate-x-1/2 rounded-[50%]" style={{ bottom: 8, width: 66, height: 78, background: "#f3eaff" }} />
-      <div className="absolute" style={{ top: 2, left: 28, width: 0, height: 0, borderLeft: "9px solid transparent", borderRight: "9px solid transparent", borderBottom: "20px solid #8a5fe0" }} />
-      <div className="absolute" style={{ top: 2, right: 28, width: 0, height: 0, borderLeft: "9px solid transparent", borderRight: "9px solid transparent", borderBottom: "20px solid #8a5fe0" }} />
-      <div className="absolute left-1/2 -translate-x-1/2 flex items-center" style={{ top: 24 }}><Eye /><div style={{ width: 6, height: 3, background: "#6b4bab" }} /><Eye /></div>
-      <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 66, width: 0, height: 0, borderLeft: "7px solid transparent", borderRight: "7px solid transparent", borderTop: "12px solid #ffb938" }} />
-      <div className="absolute rounded-full" style={{ top: 62, left: 24, width: 15, height: 9, background: "#ff9ec4", opacity: 0.65 }} />
-      <div className="absolute rounded-full" style={{ top: 62, right: 24, width: 15, height: 9, background: "#ff9ec4", opacity: 0.65 }} />
-    </div>
-  );
-}
-function Giraffe({ neck, state }) {
-  const h = Math.min(94, 16 + neck);
-  const GEye = ({ side }) => <div className="absolute rounded-full bg-white flex items-center justify-center" style={{ top: 14, left: side === "l" ? 13 : undefined, right: side === "r" ? 13 : undefined, width: 16, height: 17 }}><div style={{ position: "relative", width: 9, height: 9, borderRadius: 99, background: "#3a2a22" }}><div style={{ position: "absolute", top: 1, left: 1, width: 3, height: 3, borderRadius: 99, background: "#fff" }} /></div></div>;
-  return (
-    <div className={"relative flex flex-col items-center " + (state === "freeze" ? "shiver" : "")} style={{ width: 124 }}>
-      <div className="relative" style={{ zIndex: 3, marginBottom: -2 }}>
-        <div className="rounded-[46%]" style={{ width: 62, height: 54, background: "#ffd479" }} />
-        <div className="absolute" style={{ top: -13, left: 16, width: 6, height: 13, background: "#e0a94a", borderRadius: 4 }}><div className="rounded-full" style={{ position: "absolute", top: -6, left: -3, width: 12, height: 12, background: "#c98f3a" }} /></div>
-        <div className="absolute" style={{ top: -13, right: 16, width: 6, height: 13, background: "#e0a94a", borderRadius: 4 }}><div className="rounded-full" style={{ position: "absolute", top: -6, left: -3, width: 12, height: 12, background: "#c98f3a" }} /></div>
-        <div className="absolute rounded-[50%]" style={{ top: 12, left: -7, width: 16, height: 11, background: "#f3c25f" }} />
-        <div className="absolute rounded-[50%]" style={{ top: 12, right: -7, width: 16, height: 11, background: "#f3c25f" }} />
-        <GEye side="l" /><GEye side="r" />
-        <div className="absolute left-1/2 -translate-x-1/2 rounded-[40%]" style={{ bottom: 3, width: 34, height: 20, background: "#ffe1a3" }} />
-        <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: 9, width: 14, height: 6, borderBottom: "2px solid #b5824a", borderRadius: "0 0 8px 8px" }} />
-        <div className="absolute rounded-full" style={{ top: 30, left: 5, width: 12, height: 7, background: "#ff9ec4", opacity: 0.6 }} />
-        <div className="absolute rounded-full" style={{ top: 30, right: 5, width: 12, height: 7, background: "#ff9ec4", opacity: 0.6 }} />
-      </div>
-      <div style={{ width: 26, height: h, background: "#ffd479", marginTop: -2, borderRadius: 8, transition: "height .5s ease-out", overflow: "hidden", position: "relative", zIndex: 1 }}>
-        {[16, 50, 82].map((t) => <div key={t} className="absolute rounded-md" style={{ top: t + "%", left: 5, width: 10, height: 10, background: "#e0a94a" }} />)}
-      </div>
-      <div className="rounded-[44%]" style={{ width: 80, height: 56, background: "#ffd479", marginTop: -4, position: "relative" }}>
-        <div className="absolute rounded-md" style={{ top: 10, left: 14, width: 12, height: 12, background: "#e0a94a" }} />
-        <div className="absolute rounded-md" style={{ top: 26, right: 16, width: 12, height: 12, background: "#e0a94a" }} />
+/* Cute chibi animal customers — big head, big sparkly eyes, rosy cheeks, soft
+ * pastel colours. One component draws every species (collectible feel). */
+const ANIMAL_STYLE = {
+  bear:    { body: "#caa06f", belly: "#ecd6b0", dark: "#a87c4f", nose: "#5a3a22" },
+  penguin: { body: "#4a72a8", belly: "#ffffff", dark: "#ffb938", nose: "#ffb938" },
+  cat:     { body: "#ffc23d", belly: "#fff0c2", dark: "#eaa92a", nose: "#ff7a9c" },
+  frog:    { body: "#86d65a", belly: "#cdf5b3", dark: "#5fb53e", nose: "#3f8f2a" },
+  rabbit:  { body: "#ff9ec4", belly: "#ffe1ee", dark: "#ef84ad", nose: "#ff5c8a" },
+  elephant:{ body: "#94b6e4", belly: "#bcd5f2", dark: "#7a9bd0", nose: "#7a9bd0" },
+  panda:   { body: "#fbfbfb", belly: "#fbfbfb", dark: "#2a2a2a", nose: "#2a2a2a" },
+  fox:     { body: "#ff8b45", belly: "#fff1e3", dark: "#e5712f", nose: "#5a3a22" },
+  owl:     { body: "#8ec449", belly: "#e7f3c8", dark: "#6fa233", nose: "#ffb938" },
+  bird:    { body: "#b388ff", belly: "#e7dbff", dark: "#9a6bf0", nose: "#ffb938" },
+};
+function ChibiAnimal({ type, state, size = 120 }) {
+  const s = ANIMAL_STYLE[type] || ANIMAL_STYLE.bear;
+  const blink = state === "freeze" ? "googly" : "owl-blink";
+  const scale = size / 120;
+  const Eye = ({ x, w = 26, h = 30 }) => (
+    <div className="absolute rounded-full bg-white flex items-center justify-center" style={{ top: 42, left: x, width: w, height: h, zIndex: 4 }}>
+      <div className={blink} style={{ position: "relative", width: w * 0.66, height: h * 0.7, borderRadius: 99, background: "#2b2320" }}>
+        <div style={{ position: "absolute", top: 3, left: 3, width: 6, height: 6, borderRadius: 99, background: "#fff" }} />
       </div>
     </div>
   );
-}
-function Cat({ state }) {
-  const CEye = ({ side }) => <div className="absolute rounded-full bg-white flex items-center justify-center" style={{ top: 30, left: side === "l" ? 30 : undefined, right: side === "r" ? 30 : undefined, width: 18, height: 20 }}><div style={{ position: "relative", width: 10, height: 12, borderRadius: 99, background: "#3a2a22" }}><div style={{ position: "absolute", top: 2, left: 2, width: 3, height: 3, borderRadius: 99, background: "#fff" }} /></div></div>;
+  const triEar = (left, color, inner) => (
+    <div className="absolute" style={{ top: -4, [left ? "left" : "right"]: 14, width: 0, height: 0, borderLeft: "16px solid transparent", borderRight: "16px solid transparent", borderBottom: "26px solid " + color, zIndex: 1 }}>
+      {inner && <div style={{ position: "absolute", top: 11, left: -7, width: 0, height: 0, borderLeft: "7px solid transparent", borderRight: "7px solid transparent", borderBottom: "13px solid " + inner }} />}
+    </div>
+  );
   return (
-    <div className={"relative " + (state === "freeze" ? "shiver" : "bob")} style={{ width: 124, height: 124 }}>
-      <div className="absolute left-1/2 -translate-x-1/2 bottom-0 rounded-[46%]" style={{ width: 100, height: 70, background: "linear-gradient(#ffc18a,#ffb07c)" }} />
-      <div className="absolute rounded-full" style={{ bottom: 8, right: 4, width: 34, height: 14, background: "#ffb07c", transform: "rotate(20deg)" }} />
-      <div className="absolute left-1/2 -translate-x-1/2 rounded-[46%]" style={{ top: 4, width: 86, height: 76, background: "#ffc59b" }} />
-      <div className="absolute" style={{ top: 0, left: 30, width: 0, height: 0, borderLeft: "13px solid transparent", borderRight: "13px solid transparent", borderBottom: "22px solid #ffc59b" }} />
-      <div className="absolute" style={{ top: 0, right: 30, width: 0, height: 0, borderLeft: "13px solid transparent", borderRight: "13px solid transparent", borderBottom: "22px solid #ffc59b" }} />
-      <div className="absolute" style={{ top: 5, left: 35, width: 0, height: 0, borderLeft: "7px solid transparent", borderRight: "7px solid transparent", borderBottom: "12px solid #ff9ec4" }} />
-      <div className="absolute" style={{ top: 5, right: 35, width: 0, height: 0, borderLeft: "7px solid transparent", borderRight: "7px solid transparent", borderBottom: "12px solid #ff9ec4" }} />
-      {state === "freeze" ? (<>
-        <div className="absolute googly rounded-full" style={{ top: 32, left: 34, width: 13, height: 13, background: "#222" }} />
-        <div className="absolute googly rounded-full" style={{ top: 32, right: 34, width: 13, height: 13, background: "#222" }} />
-      </>) : (<><CEye side="l" /><CEye side="r" /></>)}
-      <div className="absolute rounded-full" style={{ top: 50, left: 20, width: 16, height: 10, background: "#ff9ec4", opacity: 0.55 }} />
-      <div className="absolute rounded-full" style={{ top: 50, right: 20, width: 16, height: 10, background: "#ff9ec4", opacity: 0.55 }} />
-      <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 50, width: 8, height: 5, background: "#ff7a9c", borderRadius: 3 }} />
-      <div className="absolute left-1/2 -translate-x-1/2 cat-yawn rounded-full" style={{ top: 58, width: 16, height: 12, background: "#7a3b4a" }} />
-      <div className="absolute" style={{ top: 52, left: 6, width: 18, height: 2, background: "#e6c4a0", borderRadius: 2 }} />
-      <div className="absolute" style={{ top: 58, left: 6, width: 18, height: 2, background: "#e6c4a0", borderRadius: 2 }} />
-      <div className="absolute" style={{ top: 52, right: 6, width: 18, height: 2, background: "#e6c4a0", borderRadius: 2 }} />
-      <div className="absolute" style={{ top: 58, right: 6, width: 18, height: 2, background: "#e6c4a0", borderRadius: 2 }} />
+    <div style={{ width: 120 * scale, height: 134 * scale }}>
+      <div className={"relative " + (state === "freeze" ? "shiver" : "bob")} style={{ width: 120, height: 134, transform: scale !== 1 ? "scale(" + scale + ")" : undefined, transformOrigin: "bottom center" }}>
+        {/* body */}
+        <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: 0, width: 74, height: 56, background: s.body, borderRadius: "46% 46% 44% 44%" }} />
+        <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: 2, width: 44, height: 34, background: s.belly, borderRadius: "50%" }} />
+        <div className="absolute rounded-full" style={{ bottom: -3, left: 40, width: 15, height: 10, background: s.dark }} />
+        <div className="absolute rounded-full" style={{ bottom: -3, right: 40, width: 15, height: 10, background: s.dark }} />
+
+        {(type === "bear" || type === "panda") && (<>
+          <div className="absolute rounded-full" style={{ top: -2, left: 16, width: 30, height: 30, background: type === "panda" ? s.dark : s.body }} />
+          <div className="absolute rounded-full" style={{ top: -2, right: 16, width: 30, height: 30, background: type === "panda" ? s.dark : s.body }} />
+        </>)}
+        {type === "elephant" && (<>
+          <div className="absolute rounded-full" style={{ top: 28, left: -6, width: 40, height: 44, background: s.body }} />
+          <div className="absolute rounded-full" style={{ top: 28, right: -6, width: 40, height: 44, background: s.body }} />
+        </>)}
+        {type === "rabbit" && (<>
+          <div className="absolute" style={{ top: -34, left: 32, width: 18, height: 46, background: s.body, borderRadius: 20 }}><div className="absolute" style={{ top: 6, left: 5, width: 8, height: 30, background: "#ffd0e6", borderRadius: 12 }} /></div>
+          <div className="absolute" style={{ top: -34, right: 32, width: 18, height: 46, background: s.body, borderRadius: 20 }}><div className="absolute" style={{ top: 6, left: 5, width: 8, height: 30, background: "#ffd0e6", borderRadius: 12 }} /></div>
+        </>)}
+        {type === "owl" && (<>
+          <div className="absolute" style={{ top: -2, left: 26, width: 0, height: 0, borderLeft: "10px solid transparent", borderRight: "10px solid transparent", borderBottom: "20px solid " + s.dark }} />
+          <div className="absolute" style={{ top: -2, right: 26, width: 0, height: 0, borderLeft: "10px solid transparent", borderRight: "10px solid transparent", borderBottom: "20px solid " + s.dark }} />
+        </>)}
+        {type === "bird" && <div className="absolute left-1/2 -translate-x-1/2" style={{ top: -8, width: 8, height: 16, background: s.dark, borderRadius: 6, transform: "rotate(-12deg)" }} />}
+
+        {/* head */}
+        <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 2, width: 100, height: 92, background: s.body, borderRadius: "48% 48% 46% 46%", zIndex: 2 }} />
+
+        {type === "penguin" && <div className="absolute left-1/2 -translate-x-1/2 rounded-[50%]" style={{ top: 16, width: 74, height: 70, background: "#ffffff", zIndex: 3 }} />}
+        {type === "fox" && <div className="absolute left-1/2 -translate-x-1/2 rounded-[50%]" style={{ top: 52, width: 56, height: 40, background: s.belly, zIndex: 3 }} />}
+        {type === "panda" && (<>
+          <div className="absolute rounded-[50%]" style={{ top: 40, left: 24, width: 24, height: 28, background: s.dark, transform: "rotate(-12deg)", zIndex: 3 }} />
+          <div className="absolute rounded-[50%]" style={{ top: 40, right: 24, width: 24, height: 28, background: s.dark, transform: "rotate(12deg)", zIndex: 3 }} />
+        </>)}
+
+        {type === "cat" && (<>{triEar(true, s.body, "#ff9ec4")}{triEar(false, s.body, "#ff9ec4")}</>)}
+        {type === "fox" && (<>{triEar(true, s.body, "#fff")}{triEar(false, s.body, "#fff")}</>)}
+
+        {type === "frog" ? (<>
+          <div className="absolute rounded-full bg-white flex items-center justify-center" style={{ top: -6, left: 22, width: 34, height: 34, border: "3px solid " + s.body, zIndex: 4 }}><div className={blink} style={{ width: 16, height: 18, borderRadius: 99, background: "#2b2320" }} /></div>
+          <div className="absolute rounded-full bg-white flex items-center justify-center" style={{ top: -6, right: 22, width: 34, height: 34, border: "3px solid " + s.body, zIndex: 4 }}><div className={blink} style={{ width: 16, height: 18, borderRadius: 99, background: "#2b2320" }} /></div>
+        </>) : type === "owl" ? (
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center" style={{ top: 40, zIndex: 4 }}>
+            <div className="rounded-full bg-white flex items-center justify-center" style={{ width: 32, height: 32, border: "3px solid #6b4bab" }}><div className={blink} style={{ width: 16, height: 16, borderRadius: 99, background: "#2b2320" }} /></div>
+            <div style={{ width: 5, height: 3, background: "#6b4bab" }} />
+            <div className="rounded-full bg-white flex items-center justify-center" style={{ width: 32, height: 32, border: "3px solid #6b4bab" }}><div className={blink} style={{ width: 16, height: 16, borderRadius: 99, background: "#2b2320" }} /></div>
+          </div>
+        ) : (<><Eye x={28} /><Eye x={66} /></>)}
+
+        <div className="absolute rounded-full" style={{ top: 66, left: 20, width: 16, height: 10, background: "#ff7eb3", opacity: 0.55, zIndex: 4 }} />
+        <div className="absolute rounded-full" style={{ top: 66, right: 20, width: 16, height: 10, background: "#ff7eb3", opacity: 0.55, zIndex: 4 }} />
+
+        {(type === "penguin" || type === "bird" || type === "owl") ? (
+          <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 64, width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "12px solid " + s.nose, zIndex: 5 }} />
+        ) : type === "elephant" ? (
+          <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 60, width: 18, height: 40, background: s.body, borderRadius: 10, zIndex: 5 }}><div className="absolute bottom-0 left-0 right-0" style={{ height: 8, background: s.dark, borderRadius: 6 }} /></div>
+        ) : type === "frog" ? (
+          <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 62, width: 40, height: 8, borderBottom: "3px solid #3f8f2a", borderRadius: "0 0 40px 40px", zIndex: 5 }} />
+        ) : (<>
+          <div className="absolute left-1/2 -translate-x-1/2 rounded-full" style={{ top: 62, width: 9, height: 6, background: s.nose, zIndex: 5 }} />
+          <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 68, width: 16, height: 8, borderBottom: "2.5px solid " + s.nose, borderRadius: "0 0 12px 12px", zIndex: 5 }} />
+        </>)}
+      </div>
     </div>
   );
 }
-function CustomerView({ customer, neck, state }) {
-  const t = customer.type;
-  const inner = t === "owl" ? <Owl state={state} /> : t === "giraffe" ? <Giraffe neck={neck} state={state} /> : t === "cat" ? <Cat state={state} /> : <div className={"text-[80px] leading-none " + (state === "freeze" ? "shiver" : "bob")}>{CUSTOMER_INFO[t].emoji}</div>;
-  return <div className="relative flex flex-col items-center">{customer.golden && <div className="absolute -inset-3 golden-glow" />}<div className="relative">{inner}</div></div>;
+function CustomerView({ customer, state }) {
+  return <div className="relative flex flex-col items-center">{customer.golden && <div className="absolute -inset-3 golden-glow" />}<div className="relative"><ChibiAnimal type={customer.type} state={state} /></div></div>;
 }
+
 function Confetti({ show, big }) {
   if (!show) return null;
   const colors = ["#ff6b9d", "#7ed957", "#ffd93d", "#4dd0e1", "#b388ff", "#ff9f43"];
@@ -488,7 +539,10 @@ function ShopScene({ tierIdx, world, shop, placed, editable, height = 300, onIte
       className="relative rounded-[1.6rem] overflow-hidden shadow-2xl select-none" style={{ height, border: "4px solid #ffd1e3", touchAction: editable ? "none" : "auto" }}>
       {/* wall */}
       <div className="absolute inset-0" style={{ background: wall ? wall.bg : I.wall }} />
-      <div className="absolute inset-0 opacity-25" style={{ backgroundImage: (wall && wall.dark) ? "radial-gradient(#ffffff66 1px,transparent 1px)" : "radial-gradient(#ffffff 2px, transparent 2px)", backgroundSize: "22px 22px" }} />
+      {!wall && <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(90deg, rgba(255,150,190,0.16) 0 18px, transparent 18px 36px)" }} />}
+      <div className="absolute inset-0 opacity-20" style={{ backgroundImage: (wall && wall.dark) ? "radial-gradient(#ffffff66 1px,transparent 1px)" : "radial-gradient(#ffffff 2px, transparent 2px)", backgroundSize: "26px 26px" }} />
+      {/* hanging pendant lamps */}
+      <div className="absolute left-0 right-0 flex justify-around px-6" style={{ top: 0, zIndex: 1 }}>{[0, 1, 2].map((i) => (<div key={i} className="flex flex-col items-center"><div style={{ width: 2, height: 10, background: "#cfa9a9" }} /><div style={{ width: 18, height: 12, borderRadius: "0 0 50% 50%", background: "linear-gradient(#ff9ec4,#ff7eb3)", boxShadow: "0 5px 10px rgba(255,150,190,.45)" }} /></div>))}</div>
 
       {/* roof / awning (or a starter umbrella for the tiny cart) */}
       {roof ? (
@@ -551,7 +605,7 @@ function ShopScene({ tierIdx, world, shop, placed, editable, height = 300, onIte
 
 /* The STOREFRONT — the shop seen from the street. Ishana serves from the
  * window inside; the customer waits OUTSIDE on the sidewalk in front.        */
-function StorefrontScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood, customer, neck, freeze, children }) {
+function StorefrontScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood, customer, freeze, height = 300, children }) {
   const I = INTERIORS[tierIdx];
   const S = (k) => (shop[k] ? ITEM[shop[k]] : null);
   const sign = S("sign"), roof = S("roof"), ent = S("entrance"), win = S("window"), counter = S("counter"), wall = S("wall"), mac = S("machine"), helper = S("helper");
@@ -560,13 +614,20 @@ function StorefrontScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMo
   const counterColor = counter ? counter.color : I.counter;
   const decoEmojis = placed.map((p) => ITEM[p.id] && ITEM[p.id].emoji).filter(Boolean).slice(0, 8);
   return (
-    <div className="relative rounded-[1.6rem] overflow-hidden shadow-2xl" style={{ height: 300, border: "4px solid #ffd1e3" }}>
+    <div className="relative rounded-[1.6rem] overflow-hidden shadow-2xl w-full" style={{ height, minHeight: 200, border: "4px solid #ffd1e3" }}>
       {/* sky + far scenery */}
       <div className="absolute inset-0" style={{ background: "linear-gradient(" + world.sky[0] + "," + world.sky[1] + ")" }} />
-      <div className="absolute" style={{ top: 8, left: 10, fontSize: 22, opacity: 0.85 }}>{world.sun}</div>
-      <div className="absolute float-slow" style={{ top: 14, right: 14, fontSize: 24, opacity: 0.85 }}>{world.out}</div>
+      <div className="absolute" style={{ top: 8, left: 10, fontSize: 22, opacity: 0.9 }}>{world.sun}</div>
+      <div className="absolute float-slow" style={{ top: 10, left: "30%", fontSize: 20, opacity: 0.85 }}>☁️</div>
+      <div className="absolute float-slow" style={{ top: 20, right: "26%", fontSize: 16, opacity: 0.8, animationDelay: "1.5s" }}>☁️</div>
+      <div className="absolute float-slow" style={{ top: 14, right: 12, fontSize: 22, opacity: 0.85 }}>{world.out}</div>
       {/* sidewalk (outside ground) */}
-      <div className="absolute bottom-0 left-0 right-0" style={{ height: "24%", background: "linear-gradient(#ece3d6,#d8ccba)", borderTop: "3px solid rgba(0,0,0,0.08)", backgroundImage: "repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 46px)" }} />
+      <div className="absolute bottom-0 left-0 right-0" style={{ height: "24%", background: "linear-gradient(#f2ead9,#ddd0bb)", borderTop: "3px solid rgba(0,0,0,0.08)", backgroundImage: "repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 46px)" }} />
+      {/* greenery + lamp post + sandwich board */}
+      <div className="absolute" style={{ bottom: "20%", left: 0, fontSize: 26 }}>🌳</div>
+      <div className="absolute" style={{ bottom: "20%", right: 0, fontSize: 26 }}>🌳</div>
+      <div className="absolute" style={{ bottom: "3%", left: "3%", fontSize: 22 }}>🪴</div>
+      <div className="absolute leading-tight text-center rounded-md px-1 py-0.5" style={{ bottom: "3%", right: "4%", fontSize: 9, fontWeight: 900, color: "#fff", background: "#5a3b2a" }}>Today's<br/>Special 🍨</div>
 
       {/* SHOP BUILDING */}
       <div className="absolute" style={{ left: "5%", right: "5%", top: "7%", height: "66%" }}>
@@ -574,9 +635,15 @@ function StorefrontScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMo
           <div className="absolute left-[-2%] right-[-2%]" style={{ top: -10, height: 16, background: roofBg, borderRadius: "8px 8px 0 0", zIndex: 3 }}>
             {roof.castle && <div className="flex justify-around">{Array.from({ length: 11 }).map((_, i) => <div key={i} style={{ width: 7, height: 6, marginTop: -6, background: roof.c1 }} />)}</div>}
           </div>
-        ) : (<div className="absolute left-1/2 -translate-x-1/2 text-3xl" style={{ top: -24, zIndex: 3 }}>⛱️</div>)}
+        ) : (
+          <div className="absolute left-[-3%] right-[-3%]" style={{ top: -12, height: 18, zIndex: 3, background: "repeating-linear-gradient(90deg,#ff8fb3 0 14px,#fff 14px 28px)", borderRadius: "10px 10px 0 0" }}>
+            <div className="absolute left-0 right-0 flex justify-around" style={{ bottom: -7 }}>{Array.from({ length: 11 }).map((_, i) => <div key={i} style={{ width: 13, height: 13, borderRadius: 99, background: i % 2 ? "#fff" : "#ff8fb3" }} />)}</div>
+          </div>
+        )}
         {/* building body */}
         <div className="absolute inset-0" style={{ background: "#fff7f0", borderRadius: "14px 14px 10px 10px", border: "3px solid #ffe0ec", boxShadow: "0 6px 14px rgba(0,0,0,0.12)" }} />
+        {/* OPEN sign */}
+        <div className="absolute rounded-md px-1.5 py-0.5 text-[8px] font-black text-white" style={{ right: "8%", top: "26%", background: "#ff5c93", zIndex: 4, transform: "rotate(-4deg)" }}>OPEN</div>
         {/* sign */}
         <div className="absolute left-1/2 -translate-x-1/2 px-3 py-1 rounded-xl text-[11px] font-black text-white shadow text-center" style={{ top: 5, whiteSpace: "nowrap", zIndex: 4, background: sign ? sign.bg : "#ff7eb3", boxShadow: sign && sign.glow ? "0 0 14px 3px " + sign.glow : undefined }}>{sign && sign.tag ? sign.tag + " " : "🍦 "}Ishana's Ice Cream</div>
         {/* decorative side window */}
@@ -598,9 +665,9 @@ function StorefrontScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMo
         </div>
       </div>
 
-      {/* CUSTOMER — OUTSIDE on the sidewalk, in front of the serving counter */}
-      <div className="absolute" style={{ left: "44%", bottom: "2%", zIndex: 6, transform: "scale(0.82)", transformOrigin: "bottom center" }}>
-        <CustomerView customer={customer} neck={neck} state={freeze ? "freeze" : "wait"} />
+      {/* CUSTOMER — outside, in front of the serving counter */}
+      <div className="absolute" style={{ left: "44%", bottom: "3%", zIndex: 6, transform: "scale(0.8)", transformOrigin: "bottom center" }}>
+        <CustomerView customer={customer} state={freeze ? "freeze" : "wait"} />
       </div>
 
       {children}
@@ -617,10 +684,10 @@ function PatternMode({ onSolve, onMiss, locked }) {
   const p = useMemo(() => { const a = rand(FLAVOR_KEYS); let b = rand(FLAVOR_KEYS); while (b === a) b = rand(FLAVOR_KEYS); const seq = rand([[a, b, a, b], [a, a, b, a], [a, b, b, a]]); return { seq, answer: seq[seq.length - 1], shown: seq.slice(0, -1) }; }, []);
   return (<><Bubble><p className="text-base font-bold mb-2" style={{ color: "#6b4bff" }}>What comes next? 🤔</p><div className="flex items-center justify-center gap-2 flex-wrap">{p.shown.map((s, i) => <Scoop key={i} flavorKey={s} size={42} />)}<div className="rounded-full flex items-center justify-center text-2xl font-black" style={{ width: 42, height: 42, border: "3px dashed #b0b0b0", color: "#b0b0b0" }}>?</div></div></Bubble><FlavorButtons disabled={locked} onPick={(k) => (k === p.answer ? onSolve() : onMiss())} /></>);
 }
-function CountingMode({ level, onSolve, onMiss, locked }) {
+function CountingMode({ level, onSolve, onMiss, locked, sounds }) {
   const p = useMemo(() => ({ flavor: rand(FLAVOR_KEYS), target: randInt(2, clamp(3 + Math.floor(level / 8), 3, 6)) }), [level]);
   const [stack, setStack] = useState([]); const f = FLAVORS[p.flavor];
-  const tap = (k) => { if (locked) return; if (k !== p.flavor) { onMiss(); return; } const n = [...stack, k]; setStack(n); if (n.length >= p.target) onSolve(); };
+  const tap = (k) => { if (locked) return; if (k !== p.flavor) { onMiss(); return; } const n = [...stack, k]; setStack(n); sounds && sounds.plop(); if (n.length >= p.target) onSolve(); };
   return (<><Bubble><p className="text-base font-bold mb-1" style={{ color: "#6b4bff" }}>I want <span style={{ color: f.color }}>{p.target} {f.name}</span> scoops!</p><div className="flex items-center justify-center gap-3"><Cone scoops={stack} size={30} /><div key={stack.length} className="counter-pop text-5xl font-black" style={{ color: f.color }}>{stack.length}<span className="text-2xl text-gray-400"> / {p.target}</span></div></div></Bubble><FlavorButtons disabled={locked} onPick={tap} /></>);
 }
 function AdditionMode({ level, onSolve, onMiss, locked }) {
@@ -635,11 +702,11 @@ function MemoryMode({ level, onSolve, onMiss, locked }) {
   const tap = (k) => { if (locked || phase !== "input") return; if (k !== order[input.length]) { setInput([]); onMiss(); return; } const n = [...input, k]; setInput(n); if (n.length === order.length) onSolve(); };
   return (<><Bubble>{phase === "show" ? (<><p className="text-base font-bold mb-2" style={{ color: "#6b4bff" }}>Remember the order! 🧠 <span className="text-red-500">{count}</span></p><div className="flex items-center justify-center gap-2">{order.map((s, i) => <Scoop key={i} flavorKey={s} size={40} />)}</div></>) : (<><p className="text-base font-bold mb-2" style={{ color: "#6b4bff" }}>Make the same order! ✨</p><div className="flex items-center justify-center gap-2">{order.map((_, i) => <div key={i} className="rounded-full flex items-center justify-center" style={{ width: 40, height: 40, border: "3px dashed #ccc" }}>{input[i] && <Scoop flavorKey={input[i]} size={36} />}</div>)}</div></>)}</Bubble><FlavorButtons disabled={locked || phase === "show"} onPick={tap} /></>);
 }
-function SortingMode({ level, onSolve, onMiss, locked }) {
+function SortingMode({ level, onSolve, onMiss, locked, sounds }) {
   const target = useMemo(() => rand(FLAVOR_KEYS), [level]); const need = 4;
   const [items, setItems] = useState([]); const [got, setGot] = useState(0); const idRef = useRef(0); const done = useRef(false);
   useEffect(() => { if (locked) return; const sp = setInterval(() => { const color = Math.random() < 0.55 ? target : rand(FLAVOR_KEYS); const id = ++idRef.current; setItems((a) => [...a, { id, color, left: 8 + Math.random() * 78, dur: 2.6 + Math.random() * 1.4 }]); setTimeout(() => setItems((a) => a.filter((x) => x.id !== id)), 4200); }, 650); return () => clearInterval(sp); }, [locked, target]);
-  const grab = (x) => { if (locked || done.current) return; setItems((a) => a.filter((y) => y.id !== x.id)); if (x.color === target) { const g = got + 1; setGot(g); if (g >= need) { done.current = true; onSolve(); } } else onMiss(); };
+  const grab = (x) => { if (locked || done.current) return; setItems((a) => a.filter((y) => y.id !== x.id)); if (x.color === target) { const g = got + 1; setGot(g); sounds && sounds.sparkle(); if (g >= need) { done.current = true; onSolve(); } } else onMiss(); };
   const f = FLAVORS[target];
   return (<><Bubble><p className="text-base font-bold" style={{ color: "#6b4bff" }}>Catch <span style={{ color: f.color }}>{need} {f.name}</span> scoops! 🌧️</p><p className="text-sm text-gray-500">Tap only the right colour — {got}/{need}</p></Bubble><div className="relative rounded-2xl overflow-hidden mb-1" style={{ height: 200, background: "linear-gradient(#eef9ff,#dff1ff)", border: "3px solid #b3e5ff" }}>{items.map((x) => <button key={x.id} onClick={() => grab(x)} className="absolute falling active:scale-90" style={{ left: x.left + "%", top: -50, animationDuration: x.dur + "s" }}><Scoop flavorKey={x.color} size={46} /></button>)}</div></>);
 }
@@ -650,9 +717,9 @@ function SpeedMode({ onSolve, onMiss, locked, sounds }) {
   const tap = (k) => { if (locked || done.current) return; if (k === order) { setServed((s) => s + 1); sounds.coin(); setOrder(rand(FLAVOR_KEYS)); } else onMiss(); };
   return (<><Bubble><p className="text-base font-bold" style={{ color: "#6b4bff" }}>⚡ SPEED ROUND! Tap <span style={{ color: f.color }}>{f.name}</span>!</p><div className="mt-2 h-3 rounded-full bg-gray-200 overflow-hidden"><div style={{ width: (t / DUR) * 100 + "%", height: "100%", background: t <= 5 ? "#ff5c5c" : "#7ed957", transition: "width 1s linear" }} /></div><p className="text-sm font-black mt-1" style={{ color: "#ff7e1d" }}>Served: {served} 🍦</p></Bubble><FlavorButtons disabled={locked} onPick={tap} /></>);
 }
-function MegaMode({ level, onSolve, locked }) {
+function MegaMode({ level, onSolve, locked, sounds }) {
   const target = useMemo(() => (level < 14 ? 10 : level < 26 ? 15 : 20), [level]); const [tower, setTower] = useState([]);
-  const add = () => { if (locked) return; const n = [...tower, rand(FLAVOR_KEYS)]; setTower(n); if (n.length >= target) onSolve({ bonusCoins: target }); };
+  const add = () => { if (locked) return; const n = [...tower, rand(FLAVOR_KEYS)]; setTower(n); sounds && sounds.plop(); if (n.length >= target) onSolve({ bonusCoins: target }); };
   return (<><Bubble><p className="text-base font-bold" style={{ color: "#6b4bff" }}>🗼 MEGA ORDER! Build a <span className="text-pink-500">{target}-scoop</span> tower!</p><p className="text-sm text-gray-500">{tower.length} / {target}</p></Bubble><div className="relative rounded-2xl overflow-y-auto mb-2 flex items-end justify-center" style={{ height: 170, background: "linear-gradient(#fff,#fff5fa)", border: "3px solid #ffd1e3" }}><div className="scale-90"><Cone scoops={tower} size={26} max={30} /></div></div><button onClick={add} disabled={locked} className="w-full rounded-2xl py-5 text-2xl font-black text-white shadow-md active:scale-95 transition" style={{ background: "linear-gradient(#ff9f43,#ff7e1d)" }}>+ Add Scoop 🍦</button></>);
 }
 const MODE_COMPONENTS = { pattern: PatternMode, counting: CountingMode, addition: AdditionMode, memory: MemoryMode, sorting: SortingMode, speed: SpeedMode, mega: MegaMode };
@@ -661,7 +728,7 @@ const MODE_COMPONENTS = { pattern: PatternMode, counting: CountingMode, addition
 function Overlay({ children }) { return (<div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(40,20,60,0.45)" }}><div className="overlay-pop w-full max-w-sm text-center rounded-[2rem] p-6 shadow-2xl bg-white" style={{ border: "4px solid #ffd1e3" }}>{children}</div></div>); }
 function MysteryBox({ reward, onContinue, sounds }) { const [o, setO] = useState(false); return (<Overlay><h2 className="text-3xl font-black mb-2" style={{ color: "#a06bff" }}>🎁 Mystery Box!</h2>{!o ? (<><button onClick={() => { setO(true); sounds.mystery(); }} className="text-[90px] leading-none my-3 wiggle active:scale-90">🎁</button><p className="text-lg font-bold text-gray-500 mb-3">Tap to open!</p></>) : (<><div className="text-[80px] leading-none my-2 reward-pop">{reward.emoji}</div><p className="text-xl font-black mb-1" style={{ color: "#ff5c93" }}>{reward.label}</p><Confetti show /><button onClick={onContinue} className="pulse-btn mt-3 text-white text-xl font-black px-8 py-3 rounded-full shadow-xl" style={{ background: "linear-gradient(#7ed957,#4caf2f)" }}>Yay! ✨</button></>)}</Overlay>); }
 function Milestone({ kind, tierIdx, world, onContinue }) { return (<Overlay><Confetti show big />{kind === "world" ? (<><p className="text-lg font-bold" style={{ color: world.accent }}>NEW WORLD UNLOCKED!</p><div className="text-[80px] leading-none my-2 reward-pop">{world.out}</div><h2 className="text-3xl font-black mb-2" style={{ color: world.accent }}>{world.name}</h2></>) : (<><p className="text-lg font-bold" style={{ color: "#ff7e1d" }}>SHOP UPGRADE!</p><div className="text-[80px] leading-none my-2 reward-pop">{SHOP_TIERS[tierIdx].emoji}</div><h2 className="text-3xl font-black mb-2" style={{ color: "#ff5c93" }}>{SHOP_TIERS[tierIdx].name}</h2></>)}<div className="my-2 flex justify-center"><IshanaFace size={86} mood="dance" /></div><button onClick={onContinue} className="pulse-btn mt-2 text-white text-xl font-black px-8 py-3 rounded-full shadow-xl" style={{ background: "linear-gradient(#ff7eb3,#ff5c93)" }}>Hooray! 🎉</button></Overlay>); }
-function RareArrival({ customer, onContinue }) { return (<Overlay><Confetti show /><p className="text-lg font-bold" style={{ color: "#a06bff" }}>✨ RARE VISITOR! ✨</p><div className="text-[90px] leading-none my-2 reward-pop">{CUSTOMER_INFO[customer].emoji}</div><h2 className="text-2xl font-black mb-1" style={{ color: "#ff5c93" }}>{CUSTOMER_INFO[customer].name}</h2><p className="text-sm text-gray-500 mb-3">New sticker for your album! 📖</p><button onClick={onContinue} className="pulse-btn text-white text-xl font-black px-8 py-3 rounded-full shadow-xl" style={{ background: "linear-gradient(#a06bff,#7b3ff2)" }}>Cool! 🌟</button></Overlay>); }
+function RareArrival({ customer, onContinue }) { return (<Overlay><Confetti show /><p className="text-lg font-bold" style={{ color: "#a06bff" }}>✨ NEW FRIEND! ✨</p><div className="my-2 reward-pop flex justify-center"><ChibiAnimal type={customer} state="wait" size={104} /></div><h2 className="text-2xl font-black mb-1" style={{ color: "#ff5c93" }}>{CUSTOMER_INFO[customer].name}</h2><p className="text-sm text-gray-500 mb-3">New sticker for your album! 📖</p><button onClick={onContinue} className="pulse-btn text-white text-xl font-black px-8 py-3 rounded-full shadow-xl" style={{ background: "linear-gradient(#a06bff,#7b3ff2)" }}>Cool! 🌟</button></Overlay>); }
 function DailyReward({ day, onClaim }) { return (<Overlay><h2 className="text-2xl font-black mb-1" style={{ color: "#ff7e1d" }}>🎁 Daily Reward!</h2><p className="text-sm font-bold text-gray-500 mb-3">Day {day + 1} — come back every day!</p><div className="grid grid-cols-4 gap-2 mb-4">{DAILY_REWARDS.map((r, i) => (<div key={i} className="rounded-2xl p-2 flex flex-col items-center justify-center" style={{ background: i < day ? "#e9ffe9" : i === day ? "#fff3d6" : "#f3f3f3", border: "3px solid " + (i === day ? "#ffb300" : i < day ? "#7ed957" : "#eee"), aspectRatio: "1" }}><div className="text-2xl">{i < day ? "✅" : r.emoji}</div><div className="text-[8px] font-bold mt-0.5 leading-tight">{r.label}</div></div>))}</div><button onClick={onClaim} className="pulse-btn text-white text-xl font-black px-8 py-3 rounded-full shadow-xl" style={{ background: "linear-gradient(#ff9f43,#ff7e1d)" }}>Claim {DAILY_REWARDS[day].emoji}</button></Overlay>); }
 
 /* Visual preview for any catalog item — real swatches for slot upgrades so
@@ -677,14 +744,14 @@ function ItemIcon({ item, size = 28 }) {
 }
 
 /* ============================== ITEM GRID ================================ */
-function ItemGrid({ items, save, onUse, isEquipped, labelFor }) {
+function ItemGrid({ items, save, onUse, isEquipped, labelFor, noDisable }) {
   return (<div className="grid grid-cols-3 gap-2">{items.map((i) => {
     const owned = save.owned.includes(i.id), equipped = isEquipped ? isEquipped(i) : false, afford = save.coins >= i.cost;
-    return (<button key={i.id} onClick={() => onUse(i)} disabled={!owned && !afford} className="relative rounded-2xl p-2 shadow-md transition active:scale-95 text-center flex flex-col items-center" style={{ background: equipped ? "#fff0d6" : owned ? "#f3fff3" : afford ? "#fff" : "#f3f3f3", border: "3px solid " + (equipped ? "#ffb300" : owned ? "#7ed957" : "#eee"), opacity: owned || afford ? 1 : 0.6 }}>
+    return (<button key={i.id} onClick={() => onUse(i)} disabled={!noDisable && !owned && !afford} className="relative rounded-2xl p-2 shadow-md transition active:scale-95 text-center flex flex-col items-center" style={{ background: equipped ? "#fff0d6" : owned ? "#f3fff3" : afford ? "#fff" : "#f3f3f3", border: "3px solid " + (equipped ? "#ffb300" : owned ? "#7ed957" : "#eee"), opacity: owned || afford ? 1 : 0.6 }}>
       <div className="absolute top-1 left-1"><RarityBadge rarity={i.rarity} /></div>
       <div className="mt-3 flex items-center justify-center" style={{ minHeight: 30 }}><ItemIcon item={i} size={26} /></div>
       <div className="text-[10px] font-bold mt-1 leading-tight">{i.name}</div>
-      <div className="text-[10px] font-black mt-0.5" style={{ color: equipped ? "#ff7e1d" : owned ? "#4caf2f" : "#ff7e1d" }}>{labelFor ? labelFor(i, owned, equipped) : (equipped ? "Using ✓" : owned ? "Use it" : "🪙 " + i.cost)}</div>
+      <div className="text-[10px] font-black mt-0.5" style={{ color: equipped ? "#ff7e1d" : owned ? "#4caf2f" : "#ff7e1d" }}>{labelFor ? labelFor(i, owned, equipped) : (equipped ? "Using ✓" : owned ? "Use it" : "🪙 " + money(i.cost))}</div>
     </button>);
   })}</div>);
 }
@@ -692,12 +759,28 @@ function ItemGrid({ items, save, onUse, isEquipped, labelFor }) {
 /* ============================== PAGES ==================================== */
 function DressUpPage({ save, onUse }) {
   const [cat, setCat] = useState("dress");
+  const [tryOn, setTryOn] = useState(null); // unowned item being previewed before buying
   const cats = [["dress", "👗"], ["shoes", "👟"], ["acc", "🎀"], ["hat", "👒"], ["pet", "🐾"]];
-  const isEq = (i) => (i.cat === "pet" ? save.pet === i.id : save.equipped[i.cat] === i.id);
+  const isEq = (i) => (tryOn ? tryOn.id === i.id : (i.cat === "pet" ? save.pet === i.id : save.equipped[i.cat] === i.id));
+  // Avatar reflects the Try-On preview when active.
+  const previewEquipped = tryOn && tryOn.cat !== "pet" ? { ...save.equipped, [tryOn.cat]: tryOn.id } : save.equipped;
+  const previewPet = tryOn && tryOn.cat === "pet" ? tryOn.id : save.pet;
+  const tap = (i) => {
+    if (save.owned.includes(i.id)) { setTryOn(null); onUse(i); }      // owned -> wear now
+    else setTryOn(tryOn && tryOn.id === i.id ? null : i);              // not owned -> try it on
+  };
+  const buy = () => { if (tryOn) { onUse(tryOn); setTryOn(null); } };  // confirm purchase
   return (<div>
-    <div className="flex justify-center mb-2"><FullIshana equipped={save.equipped} pet={save.pet} size={138} mood="idle" /></div>
-    <div className="flex justify-center gap-2 mb-2">{cats.map(([c, e]) => <button key={c} onClick={() => setCat(c)} className="w-11 h-11 rounded-2xl text-xl shadow active:scale-90" style={{ background: cat === c ? "#ff7eb3" : "#fff", border: "3px solid " + (cat === c ? "#ff5c93" : "#eee") }}>{e}</button>)}</div>
-    <div className="rounded-2xl p-2 bg-white/70" style={{ border: "3px solid #ffd1e3" }}><div className="max-h-[34vh] overflow-y-auto pr-1"><ItemGrid items={byCat(cat)} save={save} onUse={onUse} isEquipped={isEq} labelFor={(i, o, e) => (e ? (cat === "pet" ? "Chosen ✓" : "Wearing ✓") : o ? (cat === "pet" ? "Pick pet" : "Tap to wear") : "🪙 " + i.cost)} /></div></div>
+    <div className="flex justify-center mb-2"><FullIshana equipped={previewEquipped} pet={previewPet} size={138} mood="idle" /></div>
+    {tryOn && (
+      <div className="flex items-center justify-center gap-2 mb-2 banner-pop">
+        <span className="text-sm font-black" style={{ color: "#a06bff" }}>Try-On: {tryOn.name}</span>
+        <button onClick={buy} disabled={save.coins < tryOn.cost} className="text-sm font-black text-white px-4 py-1.5 rounded-full shadow active:scale-95" style={{ background: save.coins >= tryOn.cost ? "linear-gradient(#7ed957,#4caf2f)" : "#bbb" }}>Buy 🪙 {money(tryOn.cost)}</button>
+        <button onClick={() => setTryOn(null)} className="text-xs font-bold text-gray-400 underline">cancel</button>
+      </div>
+    )}
+    <div className="flex justify-center gap-2 mb-2">{cats.map(([c, e]) => <button key={c} onClick={() => { setCat(c); setTryOn(null); }} className="w-11 h-11 rounded-2xl text-xl shadow active:scale-90" style={{ background: cat === c ? "#ff7eb3" : "#fff", border: "3px solid " + (cat === c ? "#ff5c93" : "#eee") }}>{e}</button>)}</div>
+    <div className="rounded-2xl p-2 bg-white/70" style={{ border: "3px solid #ffd1e3" }}><div className="max-h-[30vh] overflow-y-auto pr-1"><ItemGrid items={byCat(cat)} save={save} onUse={tap} isEquipped={isEq} noDisable labelFor={(i, o, e) => (o ? (e ? (cat === "pet" ? "Chosen ✓" : "Wearing ✓") : (cat === "pet" ? "Pick pet" : "Tap to wear")) : (tryOn && tryOn.id === i.id ? "Trying… 👀" : "Try on 👀"))} /></div></div>
   </div>);
 }
 
@@ -755,7 +838,7 @@ function DecoratePage({ save, setSave, sounds, world, tierIdx }) {
           active.cats.map((c) => (
             <div key={c} className="mb-2">
               <div className="text-xs font-black mb-1 px-1" style={{ color: "#ff5c93" }}>{CAT_LABEL[c] || "Decorations"}</div>
-              <ItemGrid items={byCat(c)} save={save} onUse={onUse} isEquipped={(i) => (isSlot(i.cat) ? save.shop[i.cat] === i.id : placedIds.includes(i.id))} labelFor={(i, o, e) => (isSlot(i.cat) ? (e ? "Using ✓" : o ? "Use it" : "🪙 " + i.cost) : (placedIds.includes(i.id) ? "In shop ✓" : o ? "Place it" : "🪙 " + i.cost))} />
+              <ItemGrid items={byCat(c)} save={save} onUse={onUse} isEquipped={(i) => (isSlot(i.cat) ? save.shop[i.cat] === i.id : placedIds.includes(i.id))} labelFor={(i, o, e) => (isSlot(i.cat) ? (e ? "Using ✓" : o ? "Use it" : "🪙 " + money(i.cost)) : (placedIds.includes(i.id) ? "In shop ✓" : o ? "Place it" : "🪙 " + money(i.cost)))} />
             </div>
           ))
         )}
@@ -807,7 +890,6 @@ function IshanaShop() {
   const [brainFreeze, setBrainFreeze] = useState(false);
   const [shake, setShake] = useState(false);
   const [reward, setReward] = useState(null);
-  const [neck, setNeck] = useState(0);
   const [streak, setStreak] = useState(0);
   const timers = useRef([]); const modeHistory = useRef([]);
   const after = (ms, fn) => { const id = setTimeout(fn, ms); timers.current.push(id); return id; };
@@ -822,18 +904,17 @@ function IshanaShop() {
 
   const pickMode = () => { let pool = MODES.filter((m) => { if ((m === "speed" || m === "mega") && save.level < 4) return false; if (m === "memory" && save.level < 3) return false; return true; }); const last = modeHistory.current[modeHistory.current.length - 1]; pool = pool.filter((m) => m !== last); const c = rand(pool); modeHistory.current = [...modeHistory.current, c].slice(-4); return c; };
   const newRound = useCallback(() => {
-    clearTimers(); setFeedback(null); setShowConfetti(false); setShowNyam(false); setBrainFreeze(false); setReward(null); setNeck(0);
+    clearTimers(); setFeedback(null); setShowConfetti(false); setShowNyam(false); setBrainFreeze(false); setReward(null);
     let ev = null; const r = Math.random();
     if (r < 0.06) ev = { type: "golden", label: "✨ Golden Customer!", mult: 3 }; else if (r < 0.13) ev = { type: "double", label: "🪙 Double Coin Day!", mult: 2 }; else if (r < 0.18) ev = { type: "rainbow", label: "🌈 Rainbow Day!", mult: 1 };
     setEvent(ev);
-    const ur = save.rares; let cust;
+    const ur = save.rares.filter((k) => RARES[k]); let cust;
     if (ur.length && Math.random() < 0.22) cust = { type: rand(ur), isRare: true, golden: false }; else cust = { type: rand(REGULARS), isRare: false, golden: ev && ev.type === "golden" };
     if (ev && ev.type === "golden") cust.golden = true; setCustomer(cust);
     setSave((s) => (s.met.includes(cust.type) ? s : { ...s, met: [...s.met, cust.type] }));
     setMode(pickMode()); setRoundKey((k) => k + 1);
   }, [save.rares, save.level]);
 
-  useEffect(() => { if (screen !== "play" || tab !== "shop" || customer.type !== "giraffe" || feedback || overlay) return; const id = setInterval(() => setNeck((n) => Math.min(100, n + 5)), 380); return () => clearInterval(id); }, [screen, tab, customer.type, feedback, overlay]);
 
   const onMiss = useCallback(() => { if (feedback) return; setFeedback("wrong"); sounds.wrong(); setShake(true); setStreak(0); after(120, () => setShake(false)); after(650, () => setFeedback(null)); }, [feedback, sounds]);
 
@@ -845,11 +926,11 @@ function IshanaShop() {
     if (feedback) return; setFeedback("correct");
     const themeBonus = 1 + THEMES.filter((t) => themeDone(save.owned, t)).length * 0.1;
     const mult = (event ? event.mult : 1) * (customer.isRare ? 2 : 1), sb = streak >= 2 ? 1.5 : 1;
-    const coinsGain = Math.round((6 + save.level + (opts.bonusCoins || 0)) * mult * sb * themeBonus);
+    const coinsGain = Math.round((14 + save.level * 3 + (opts.bonusCoins || 0) * 3) * mult * sb * themeBonus);
     const starsGain = 1 + (streak > 0 && streak % 4 === 3 ? 1 : 0) + (customer.isRare ? 1 : 0);
     setReward({ coins: coinsGain, stars: starsGain }); setStreak((s) => s + 1);
-    sounds.correct(); setShowConfetti(true); setShake(true);
-    after(120, () => setShake(false)); after(420, () => { sounds.gulp(); setShowNyam(true); }); after(560, () => sounds.coin());
+    sounds.ding(); sounds.correct(); setShowConfetti(true); setShake(true);
+    after(120, () => setShake(false)); after(420, () => { sounds.gulp(); setShowNyam(true); }); after(620, () => { sounds.yay(); sounds.coin(); });
     after(1050, () => { setShowNyam(false); setBrainFreeze(true); }); after(2500, () => setBrainFreeze(false)); after(2700, () => setShowConfetti(false));
     after(2900, () => {
       const oldLevel = save.level, newLevel = oldLevel + 1, oldTier = tierIndexForLevel(oldLevel), newTier = tierIndexForLevel(newLevel);
@@ -874,52 +955,61 @@ function IshanaShop() {
   const ModeComp = MODE_COMPONENTS[mode]; const locked = !!feedback || !!overlay;
 
   return (
-    <div className={"min-h-screen w-full flex items-start sm:items-center justify-center p-3 " + (shake ? "screen-shake" : "")} style={{ background: "linear-gradient(160deg,#fff0f6,#e7f9ff 55%,#fff7e6)" }}>
+    <div className={"w-full flex justify-center " + (shake ? "screen-shake" : "")} style={{ height: "100dvh", overflow: "hidden", background: "linear-gradient(160deg,#fff0f6,#e7f9ff 55%,#fff7e6)", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}>
       <StyleKeyframes />
       <div className="pointer-events-none fixed inset-0 overflow-hidden -z-0">{Array.from({ length: 14 }).map((_, i) => <div key={i} className="absolute float-slow" style={{ left: (i * 7.3 % 100) + "%", top: ((i * 13) % 100) + "%", animationDelay: (i % 5) * 0.6 + "s", opacity: 0.5 }}>{["⭐", "✨", "🍬", "🍦"][i % 4]}</div>)}</div>
       <Confetti show={showConfetti} />
 
-      <div className="w-full max-w-md mx-auto relative z-10">
+      <div className="w-full max-w-md mx-auto relative z-10 flex flex-col" style={{ height: "100%" }}>
         {/* brain-freeze tint stays over the game column so it reads well on mobile */}
         {brainFreeze && (<div className="pointer-events-none absolute inset-0 z-30 rounded-[2rem] overflow-hidden" style={{ background: "rgba(80,170,255,0.22)" }}><div className="absolute left-1/2 -translate-x-1/2 text-2xl sm:text-3xl font-black text-sky-700 shiver text-center w-full px-2" style={{ top: "30%" }}>❄️ BRAIN FREEZE! ❄️</div></div>)}
         {screen === "welcome" && (
-          <div className="text-center rounded-[2rem] p-6 shadow-2xl" style={{ background: "rgba(255,255,255,0.72)", border: "4px solid #ffd1e3" }}>
+          <div className="flex-1 min-h-0 flex items-center justify-center p-3">
+          <div className="text-center rounded-[2rem] p-6 shadow-2xl w-full overflow-y-auto" style={{ maxHeight: "100%", background: "rgba(255,255,255,0.78)", border: "4px solid #ffd1e3" }}>
             <h1 className="text-4xl font-black mb-1" style={{ color: "#ff5c93" }}>Ishana's Shop</h1>
-            <p className="text-base mb-4" style={{ color: "#8a5cff" }}>🍦 Build the coolest ice cream shop! 🍦</p>
+            <p className="text-base mb-4 font-bold" style={{ color: "#8a5cff" }}>🍦 Build the coolest ice cream shop! 🍦</p>
             <div className="flex justify-center mb-5"><FullIshana equipped={save.equipped} pet={save.pet} size={150} mood="idle" /></div>
             <button onClick={startGame} className="pulse-btn inline-flex items-center gap-2 text-white text-3xl font-black px-10 py-5 rounded-full shadow-xl active:scale-95 transition" style={{ background: "linear-gradient(#ff7eb3,#ff5c93)" }}>▶ PLAY</button>
             {save.level > 1 && (<div className="mt-4 text-sm font-bold text-gray-500">Shop level {save.level} · 🪙 {save.coins} · ⭐ {save.stars}<div><button onClick={resetGame} className="mt-2 text-xs underline text-gray-400">Start a new shop</button></div></div>)}
           </div>
+          </div>
         )}
 
         {screen === "play" && (
-          <div className="relative pb-24">
-            <div className="flex items-center justify-between gap-1 mb-2 text-xs sm:text-sm">
+          <div className="flex-1 min-h-0 flex flex-col p-2">
+            <div className="shrink-0 flex items-center justify-between gap-1 mb-2 text-xs sm:text-sm">
               <div className="px-3 py-1 rounded-full font-black text-white shadow" style={{ background: "#8a5cff" }}>Lv {save.level}</div>
               <div className="px-3 py-1 rounded-full font-black bg-white shadow" style={{ color: "#f5a300" }}>⭐ {save.stars}</div>
               <div className="px-3 py-1 rounded-full font-black bg-white shadow" style={{ color: "#ff9f1d" }}><span key={save.coins} className="inline-block coin-pop">🪙 {save.coins}</span></div>
               <button onClick={() => { ovRef.current = {}; setOverlay("daily"); }} className="px-3 py-1 rounded-full font-black text-white shadow active:scale-95" style={{ background: "#ff7e1d" }}>🎁</button>
             </div>
 
-            {tab === "shop" && (<>
-              {event && <div className="mb-2 text-center text-sm font-black py-1 rounded-full text-white banner-pop" style={{ background: event.type === "rainbow" ? "linear-gradient(90deg,#ff5c93,#ffd93d,#7ed957,#4dd0e1,#a06bff)" : "#ff5c93" }}>{event.label}</div>}
-              {streak >= 2 && !feedback && <div className="mb-2 text-center text-sm font-black" style={{ color: "#ff7e1d" }}>🔥 Streak x{streak}!</div>}
-              <StorefrontScene tierIdx={tierIdx} world={world} shop={save.shop} placed={save.placed} equipped={save.equipped} pet={save.pet} ishanaMood={feedback === "correct" ? "cheer" : brainFreeze ? "freeze" : "idle"} customer={customer} neck={neck} freeze={brainFreeze}>
-                {showNyam && <div className="absolute left-1/2 -translate-x-1/2 text-5xl font-black nyam" style={{ top: "44%", zIndex: 9, color: "#ff3d77" }}>NYAM!</div>}
-                {reward && <div className="absolute top-2 right-2 text-right reward-float" style={{ zIndex: 9 }}><div className="text-lg font-black" style={{ color: "#ff9f1d" }}>+{reward.coins} 🪙</div><div className="text-md font-black" style={{ color: "#f5a300" }}>+{reward.stars} ⭐</div></div>}
-              </StorefrontScene>
-              <div className="flex items-center justify-between my-2 px-1"><span className="text-sm font-bold text-gray-500">{customer.isRare ? "✨ " : ""}{CUSTOMER_INFO[customer.type].name}</span><span className="text-xs font-black px-2 py-0.5 rounded-full text-white" style={{ background: "#4dd0e1" }}>{MODE_LABELS[mode]}</span></div>
-              <div className={shake && feedback === "wrong" ? "shake" : ""}><ModeComp key={roundKey} level={save.level} locked={locked} sounds={sounds} onSolve={onSolve} onMiss={onMiss} /></div>
-              {feedback === "wrong" && <p className="text-center mt-2 text-lg font-black" style={{ color: "#ff7e1d" }}>😆 Oops! Try again!</p>}
-            </>)}
+            {/* main content fills remaining height; nav is in-flow below (no overlap) */}
+            <div className="flex-1 min-h-0 relative">
+              {tab === "shop" && (
+                <div className="h-full flex flex-col min-h-0">
+                  {event && <div className="shrink-0 mb-1 text-center text-xs font-black py-1 rounded-full text-white banner-pop" style={{ background: event.type === "rainbow" ? "linear-gradient(90deg,#ff5c93,#ffd93d,#7ed957,#4dd0e1,#a06bff)" : "#ff5c93" }}>{event.label}</div>}
+                  {streak >= 2 && !feedback && <div className="shrink-0 mb-1 text-center text-xs font-black" style={{ color: "#ff7e1d" }}>🔥 Streak x{streak}!</div>}
+                  <div className="flex-1 min-h-0">
+                    <StorefrontScene tierIdx={tierIdx} world={world} shop={save.shop} placed={save.placed} equipped={save.equipped} pet={save.pet} ishanaMood={feedback === "correct" ? "cheer" : brainFreeze ? "freeze" : "idle"} customer={customer} freeze={brainFreeze} height="100%">
+                      {showNyam && <div className="absolute left-1/2 -translate-x-1/2 text-5xl font-black nyam" style={{ top: "42%", zIndex: 9, color: "#ff3d77" }}>NYAM!</div>}
+                      {reward && <div className="absolute top-2 right-2 text-right reward-float" style={{ zIndex: 9 }}><div className="text-lg font-black" style={{ color: "#ff9f1d" }}>+{reward.coins} 🪙</div><div className="text-md font-black" style={{ color: "#f5a300" }}>+{reward.stars} ⭐</div></div>}
+                    </StorefrontScene>
+                  </div>
+                  <div className="shrink-0 flex items-center justify-between my-1.5 px-1"><span className="text-sm font-bold text-gray-500">{customer.isRare ? "✨ " : ""}{CUSTOMER_INFO[customer.type].name}</span><span className="text-xs font-black px-2 py-0.5 rounded-full text-white" style={{ background: "#4dd0e1" }}>{MODE_LABELS[mode]}</span></div>
+                  <div className={"shrink-0 " + (shake && feedback === "wrong" ? "shake" : "")}><ModeComp key={roundKey} level={save.level} locked={locked} sounds={sounds} onSolve={onSolve} onMiss={onMiss} /></div>
+                  {feedback === "wrong" && <p className="shrink-0 text-center mt-1 text-base font-black" style={{ color: "#ff7e1d" }}>😆 Oops! Try again!</p>}
+                </div>
+              )}
+              {tab === "decorate" && <div className="h-full overflow-y-auto"><DecoratePage save={save} setSave={setSave} sounds={sounds} world={world} tierIdx={tierIdx} /></div>}
+              {tab === "dressup" && <div className="h-full overflow-y-auto"><DressUpPage save={save} onUse={useItem} /></div>}
+              {tab === "collection" && <div className="h-full overflow-y-auto"><CollectionPage save={save} /></div>}
+            </div>
 
-            {tab === "decorate" && <DecoratePage save={save} setSave={setSave} sounds={sounds} world={world} tierIdx={tierIdx} />}
-            {tab === "dressup" && <DressUpPage save={save} onUse={useItem} />}
-            {tab === "collection" && <CollectionPage save={save} />}
-
-            <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pointer-events-none">
-              <div className="pointer-events-auto mb-2 flex gap-1.5 px-2 py-2 rounded-[2rem] shadow-2xl bg-white/90 backdrop-blur" style={{ border: "3px solid #ffd1e3" }}>
-                {[["shop", "🍦", "Serve"], ["decorate", "🏪", "Upgrade"], ["dressup", "👗", "Dress Up"], ["collection", "⭐", "Album"]].map(([id, e, label]) => { const act = tab === id; return (<button key={id} onClick={() => setTab(id)} className="flex flex-col items-center justify-center rounded-2xl px-3 py-1.5 active:scale-90 transition" style={{ background: act ? "linear-gradient(#ff7eb3,#ff5c93)" : "transparent", minWidth: 64 }}><span className="text-2xl">{e}</span><span className="text-[10px] font-black" style={{ color: act ? "#fff" : "#b08" }}>{label}</span></button>); })}
+            {/* bottom nav — in-flow, never overlaps content */}
+            <div className="shrink-0 flex justify-center pt-2">
+              <div className="flex gap-1 px-2 py-1.5 rounded-[1.6rem] shadow-2xl bg-white/95 backdrop-blur" style={{ border: "3px solid #ffd1e3" }}>
+                {[["shop", "🍦", "Serve"], ["decorate", "🏪", "Upgrade"], ["dressup", "👗", "Dress Up"], ["collection", "⭐", "Album"]].map(([id, e, label]) => { const act = tab === id; return (<button key={id} onClick={() => setTab(id)} className="flex flex-col items-center justify-center rounded-2xl px-2.5 py-1 active:scale-90 transition" style={{ background: act ? "linear-gradient(#ff7eb3,#ff5c93)" : "transparent" }}><span className="text-2xl leading-none">{e}</span><span className="text-[9px] font-black mt-0.5" style={{ color: act ? "#fff" : "#b08" }}>{label}</span></button>); })}
               </div>
             </div>
           </div>

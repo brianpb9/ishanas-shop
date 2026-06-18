@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Ishana's Shop 🍦</title>
     <!-- Self-contained: works by double-clicking OR via the server. The game
          (IshanaShop.jsx) is inlined below and compiled with Babel's classic
@@ -11,7 +11,11 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <style> html, body, #root { height: 100%; margin: 0; } body { -webkit-tap-highlight-color: transparent; } </style>
+    <style>
+      html, body, #root { height: 100%; margin: 0; }
+      html, body { overflow: hidden; position: fixed; width: 100%; overscroll-behavior: none; touch-action: manipulation; }
+      body { -webkit-tap-highlight-color: transparent; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

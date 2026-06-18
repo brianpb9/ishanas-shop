@@ -48,17 +48,44 @@ animations (never a stable frame). React state updates are async, so `await` a
 
 ## Conventions & notes
 
-- **Replace Ishana's art:** set `ISHANA_FACE_SRC` at the top of `IshanaShop.jsx`
-  to a square head image; otherwise the built-in hand-drawn SVG Ishana (black
-  hair + striped ice-cream cap + pink apron) is used.
-- **Save data:** persisted to `localStorage` under `SAVE_KEY` (bump the version
-  suffix when the save shape changes to reset cleanly).
-- **Item catalog:** one `CATALOG` array; ids are prefixed by category
-  (`sign_`, `roof_`, `decor_`, `dress_`, `pet_`, …). Slot categories
-  (`SLOT_KEYS`) are single-select shop upgrades that restyle the scene;
-  `decor` items are placeable & draggable.
-- **Two shop views:** the **Serve** tab uses `StorefrontScene` (shop from the
-  street, customer outside); the **Upgrade** tab uses the interior `ShopScene`
-  for decorating.
-- Keep everything in the single file and rebuild — do not split into modules
-  (there is no bundler).
+- **Mobile-first, NO scroll:** the root is `100dvh` + `overflow:hidden` with
+  safe-area padding; the play screen is a flex column (HUD → content `flex-1
+  min-h-0` → in-flow bottom nav, so nothing overlaps). Verified no page-scroll
+  at 320/375/390/414/tablet/landscape. Management tabs scroll *internally* only.
+- **Characters are code-drawn (CSS/SVG), not image assets** — kept dynamic so
+  outfits/upgrades change live. The user provided painted reference images for
+  *style inspiration only*; do not wire them as fixed assets (an earlier attempt
+  was reverted). The empty `assets/` dir is unused.
+- **Ishana avatar (`FullIshana` + `IshanaPortrait`):** layered hair/body/clothes/
+  arms/head/hat. The portrait draws a built-in striped cap; pass `cap={!hat}` so
+  an equipped hat doesn't double up. Hats/head-accessories sit ABOVE the head;
+  glasses (`place:"face"`) over the eyes. Default outfit = pink ICE CREAM apron.
+- **Customers** = cute chibi `ChibiAnimal` (big head/eyes, pastel): regulars
+  bear/penguin/cat/frog; rares rabbit/elephant/panda/fox/owl/bird unlock by
+  level. `CUSTOMER_INFO[type]` has a small `emoji` for tiny UI; the scene renders
+  `ChibiAnimal`. Guard rare picks with `RARES[k]` (old saves had stale types).
+- **Economy / `RARITY`:** tiered prices — common ~120, rare ~900, epic ~5K,
+  legendary ~30K, **dream** (aspirational) 100K–1M with per-item `cost` override.
+  `money(n)` formats `5K`/`1M`. Coin earning ≈ `14 + level*3` × multipliers.
+- **Dress-Up Try-On:** tapping an unowned item previews it on the avatar (items
+  are tappable even if unaffordable — pass `noDisable` to `ItemGrid`); a "Buy"
+  bar confirms purchase.
+- **Sounds (`useSounds`):** correct/wrong/pop/coin/gulp/upgrade/mystery/rare/
+  fanfare/tick + plop (scoop), ding (order done), yay (customer), sparkle.
+- **Replace Ishana's art:** set `ISHANA_FACE_SRC` to a square head image;
+  otherwise the drawn portrait is used.
+- **Save data:** `localStorage` under `SAVE_KEY` — bump the version suffix when
+  the save shape changes (currently `v5`).
+- **Item catalog:** one `CATALOG` array; ids prefixed by category. Slot
+  categories (`SLOT_KEYS`) are single-select shop upgrades that restyle the
+  scene; `decor` items are placeable & draggable.
+- **Two shop views:** **Serve** tab = `StorefrontScene` (shop from the street,
+  customer outside); **Upgrade** tab = interior `ShopScene` for decorating.
+- Keep everything in the single file and rebuild — no modules (no bundler).
+
+## Known TODO / requested next
+
+- #5 extra juice: coin-fly-to-counter + heart burst on the customer.
+- #6 Home/mascot redesign with painted **image assets** (standing Ishana +
+  expression pack) — blocked: assets must be saved into `assets/` by the user;
+  Claude can't write chat images to disk. Wire with fallback once present.
