@@ -758,7 +758,7 @@ function DressUpPage({ save, onUse }) {
       </div>
     )}
     <div className="flex justify-center gap-2 mb-2">{cats.map(([c, e]) => <button key={c} onClick={() => { setCat(c); setTryOn(null); }} className="w-11 h-11 rounded-2xl text-xl shadow active:scale-90" style={{ background: cat === c ? "#ff7eb3" : "#fff", border: "3px solid " + (cat === c ? "#ff5c93" : "#eee") }}>{e}</button>)}</div>
-    <div className="rounded-2xl p-2 bg-white/70" style={{ border: "3px solid #ffd1e3" }}><div className="max-h-[30vh] overflow-y-auto pr-1"><ItemGrid items={byCat(cat)} save={save} onUse={tap} isEquipped={isEq} noDisable labelFor={(i, o, e) => (o ? (e ? (cat === "pet" ? "Chosen ✓" : "Wearing ✓") : (cat === "pet" ? "Pick pet" : "Tap to wear")) : (tryOn && tryOn.id === i.id ? "Trying… 👀" : "Try on 👀"))} /></div></div>
+    <div className="rounded-2xl p-2 bg-white/70" style={{ border: "3px solid #ffd1e3" }}><div className="max-h-[30vh] overflow-y-auto pr-1"><ItemGrid items={byCat(cat)} save={save} onUse={tap} isEquipped={isEq} labelFor={(i, o, e) => (o ? (e ? (cat === "pet" ? "Chosen ✓" : "Wearing ✓") : (cat === "pet" ? "Pick pet" : "Tap to wear")) : (save.coins >= i.cost ? (tryOn && tryOn.id === i.id ? "Trying… 👀" : "Try on 👀") : "🔒 🪙 " + money(i.cost)))} /></div></div>
   </div>);
 }
 
