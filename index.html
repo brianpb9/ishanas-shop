@@ -46,6 +46,10 @@ const ASSET = { hero: "assets/ishana-hero.png", exterior: "assets/shop-exterior.
 // Painted full-look outfit variants (a dress id -> painted Ishana image).
 const OUTFITS = { dress_pinkprincess: "assets/outfit-princess.png", dress_chef: "assets/outfit-chef.png", dress_doctor: "assets/outfit-doctor.png", dress_fairy: "assets/outfit-fairy.png", dress_unicorn: "assets/outfit-unicorn.png", dress_rainbow: "assets/outfit-rainbow.png" };
 const ishanaImg = (eq) => (eq && eq.dress && OUTFITS[eq.dress]) || ASSET.hero;
+// Painted decor art (id → png); items not listed fall back to their emoji.
+const DECOR_ART = { decor_plantsmall: "assets/decor-plant.png", decor_flowerpot: "assets/decor-plant.png", decor_lamp: "assets/decor-lamp.png", decor_frame: "assets/decor-frame.png", decor_table: "assets/decor-table.png" };
+// Painted staff characters (helper id → png); others fall back to emoji.
+const STAFF_ART = { helper_bunny: "assets/staff-bunny.png", helper_kitty: "assets/staff-cat.png" };
 const SAVE_KEY = "ishana_shop_save_v5";
 
 /* ============================== CORE DATA ================================ */
@@ -172,23 +176,22 @@ const CATALOG = [
   it("unicorn", "helper", "Unicorn Helper", "epic", { emoji: "🦄" }),
 
   /* ---- DECOR (placeable & draggable in the shop) ---- */
-  it("plantsmall", "decor", "Small Plant", "common", { emoji: "🌱" }),
-  it("flowerpot", "decor", "Flower Pot", "common", { emoji: "🪴" }),
-  it("sakura", "decor", "Sakura Tree", "rare", { emoji: "🌸" }),
-  it("table", "decor", "Café Table", "common", { emoji: "🍽️" }),
-  it("teddy", "decor", "Teddy Bear", "common", { emoji: "🧸" }),
-  it("bunnydoll", "decor", "Bunny Doll", "rare", { emoji: "🐰" }),
-  it("unicorndoll", "decor", "Unicorn Doll", "epic", { emoji: "🦄" }),
-  it("statueice", "decor", "Ice Cream Statue", "rare", { emoji: "🍦" }),
-  it("statuedragon", "decor", "Dragon Statue", "epic", { emoji: "🐉" }),
-  it("aquarium", "decor", "Aquarium", "rare", { emoji: "🐠" }),
-  it("aquariumbig", "decor", "Giant Aquarium", "epic", { emoji: "🐳" }),
-  it("sprinkle", "decor", "Sprinkle Station", "rare", { emoji: "🧁" }),
-  it("topping", "decor", "Topping Display", "rare", { emoji: "🍫" }),
-  it("photo", "decor", "Photo Booth", "rare", { emoji: "📸" }),
-  it("balloons", "decor", "Balloon Corner", "common", { emoji: "🎈" }),
-  it("fountain", "decor", "Choc Fountain", "epic", { emoji: "⛲" }),
-  it("monument", "decor", "Ice Cream Monument", "legendary", { emoji: "🗼" }),
+  /* curated, on-theme set — every item supports the cute ice-cream-shop fantasy */
+  it("plantsmall", "decor", "Small Plant", "common", { emoji: "🌱", zone: "floor" }),
+  it("flowerpot", "decor", "Flower Pot", "common", { emoji: "🪴", zone: "floor" }),
+  it("lamp", "decor", "Cozy Lamp", "common", { emoji: "💡", zone: "floor" }),
+  it("table", "decor", "Café Table", "common", { emoji: "🪑", zone: "floor" }),
+  it("sakura", "decor", "Sakura Tree", "rare", { emoji: "🌸", zone: "floor" }),
+  it("statueice", "decor", "Ice Cream Statue", "rare", { emoji: "🍦", zone: "floor" }),
+  it("teddy", "decor", "Teddy Bear", "common", { emoji: "🧸", zone: "shelf" }),
+  it("bunnydoll", "decor", "Bunny Doll", "rare", { emoji: "🐰", zone: "shelf" }),
+  it("unicorndoll", "decor", "Unicorn Doll", "epic", { emoji: "🦄", zone: "shelf" }),
+  it("sprinkle", "decor", "Sprinkle Station", "rare", { emoji: "🧁", zone: "counter" }),
+  it("topping", "decor", "Topping Display", "rare", { emoji: "🍫", zone: "counter" }),
+  it("vase", "decor", "Flower Vase", "common", { emoji: "🌷", zone: "counter" }),
+  it("frame", "decor", "Wall Frame", "common", { emoji: "🖼️", zone: "wall" }),
+  it("clock", "decor", "Wall Clock", "common", { emoji: "🕐", zone: "wall" }),
+  it("balloons", "decor", "Balloon Corner", "common", { emoji: "🎈", zone: "wall" }),
 
   /* ---- CLOTHES ---- */
   it("chef", "dress", "Chef Outfit", "common", { color: "#ffffff", emoji: "🍳" }),
@@ -255,13 +258,23 @@ const CATALOG = [
   it("dragon", "pet", "Mini Dragon", "legendary", { emoji: "🐉" }),
 
   /* ---- DREAM ITEMS (aspirational, super expensive) ---- */
-  it("giantunicorn", "decor", "Giant Unicorn Statue", "dream", { emoji: "🦄", cost: 100000 }),
-  it("rainbowcastle", "decor", "Rainbow Castle Shop", "dream", { emoji: "🏰", cost: 250000 }),
-  it("palace", "decor", "Ice Cream Palace", "dream", { emoji: "🍨", cost: 500000 }),
+  it("giantunicorn", "decor", "Giant Unicorn Statue", "dream", { emoji: "🦄", cost: 100000, zone: "floor" }),
+  it("rainbowcastle", "decor", "Rainbow Castle Shop", "dream", { emoji: "🏰", cost: 250000, zone: "floor" }),
+  it("palace", "decor", "Ice Cream Palace", "dream", { emoji: "🍨", cost: 500000, zone: "floor" }),
   it("goldqueen", "dress", "Golden Queen Outfit", "dream", { color: "linear-gradient(135deg,#fff0a8,#ffd24d,#ffb300)", emoji: "👑", cost: 1000000 }),
 ];
 const ITEM = Object.fromEntries(CATALOG.map((i) => [i.id, i]));
 const byCat = (cat) => CATALOG.filter((i) => i.cat === cat);
+// Default placement (% of scene) for a decor item, by its logical zone, so
+// nothing floats in the middle: wall=up high, shelf=top-right, counter=on the
+// counter top, floor=on the floor to the side (clear of Ishana & the customer).
+function zonePos(zone) {
+  if (zone === "wall") return { x: 38 + Math.random() * 20, y: 30 }; // mid wall, clear of window & shelf
+  if (zone === "shelf") return { x: 68 + Math.random() * 16, y: 16 };
+  if (zone === "counter") return { x: Math.random() < 0.5 ? 18 + Math.random() * 20 : 54 + Math.random() * 12, y: 71 };
+  return { x: 8 + Math.random() * 18, y: 62 }; // floor (left side)
+}
+const MAX_PLACED = 8; // keep the shop tidy — "less but better"
 
 /* Theme collections — own every item → coin bonus. */
 const THEMES = [
@@ -555,13 +568,32 @@ function ChibiAnimal({ type, state, size = 120 }) {
   );
 }
 function CustomerView({ customer, state, size }) {
-  const cls = state === "freeze" ? "shiver" : "bob";
+  const happy = state === "happy", freeze = state === "freeze";
+  const anim = freeze ? "shiver" : happy ? "cust-happy" : "bob";
   // size given → fixed px; otherwise fill the parent's WIDTH (the scene is tall
   // and narrow, so width is the limiting dimension for these square sprites)
   const imgStyle = size ? { width: size, height: size } : { width: "100%", height: "auto" };
-  return <div className="relative w-full flex items-end justify-center">{customer.golden && <div className="absolute -inset-3 golden-glow" />}
-    <ImgOr src={"assets/animal-" + customer.type + ".png"} className={cls + " object-contain"} style={{ ...imgStyle, filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.15))" }} fallback={<div className={cls}><ChibiAnimal type={customer.type} state={state} size={size || 150} /></div>} />
-  </div>;
+  return (
+    <div className="relative w-full flex items-end justify-center">
+      {customer.golden && <div className="absolute -inset-3 golden-glow" />}
+      {/* heart burst when the order is served */}
+      {happy && <div className="pointer-events-none absolute left-1/2 -translate-x-1/2" style={{ top: "2%", zIndex: 8 }}>{[-18, 0, 18].map((dx, i) => <span key={i} className="heart-float absolute" style={{ left: dx, fontSize: 20, animationDelay: i * 0.16 + "s" }}>❤️</span>)}</div>}
+      {/* order speech bubble — tail points LEFT toward Ishana, so it reads as "ordering" */}
+      {!happy && !freeze && (
+        <div className="order-bob absolute" style={{ top: "0%", left: "-4%", zIndex: 8 }}>
+          <div className="relative bg-white rounded-2xl px-2 py-1 shadow" style={{ border: "2px solid #ffd1e3", fontSize: 17, lineHeight: 1 }}>🍦
+            <div className="absolute" style={{ left: 7, bottom: -7, width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "8px solid #fff" }} />
+          </div>
+        </div>
+      )}
+      {/* slight lean toward Ishana, and mirror so the customer turns to face her */}
+      <div style={{ transform: "rotate(-4deg)", transformOrigin: "bottom center", width: "100%" }}>
+        <div style={{ transform: "scaleX(-1)" }}>
+          <ImgOr src={"assets/animal-" + customer.type + ".png"} className={anim + " object-contain"} style={{ ...imgStyle, filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.15))" }} fallback={<div className={anim}><ChibiAnimal type={customer.type} state={freeze ? "freeze" : "wait"} size={size || 150} /></div>} />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Confetti({ show, big }) {
@@ -578,7 +610,7 @@ function RarityBadge({ rarity }) { return <span className="text-[9px] font-black
  * window, counter, wall, machine, helper, ceiling — paints a REAL layer here,
  * so buying something visibly transforms the very shop you serve in.
  * Layers are sized against Ishana (~62% of the scene = the size reference).  */
-function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "idle", customer, freeze, mode = "serve", preview, editable, height = 300, onItemDown, onMove, onUp, sceneRef, children }) {
+function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "idle", customer, customerHappy, custKey, freeze, mode = "serve", preview, editable, height = 300, onItemDown, onMove, onUp, sceneRef, children }) {
   const I = INTERIORS[tierIdx];
   // effective slot item: a live-preview item temporarily overrides its slot
   const S = (k) => (preview && preview.cat === k ? preview : (shop[k] ? ITEM[shop[k]] : null));
@@ -600,7 +632,7 @@ function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "
       <div className="absolute inset-0 opacity-15" style={{ backgroundImage: (wall && wall.dark) ? "radial-gradient(#ffffff66 1px,transparent 1px)" : "radial-gradient(#ffffff 2px, transparent 2px)", backgroundSize: "28px 28px" }} />
 
       {/* ---------- FLOOR band (peeks above the counter; styled by floor upgrade) ---------- */}
-      <div className={"absolute left-0 right-0 bottom-0 " + pulse("floor")} style={{ height: "38%", background: floor ? floor.bg : "linear-gradient(" + I.floor + "," + I.floor + "dd)", borderTop: "3px solid rgba(255,255,255,0.5)", zIndex: 1 }} />
+      <div className={"absolute left-0 right-0 bottom-0 " + pulse("floor")} style={{ height: "38%", background: floor ? floor.bg : "linear-gradient(#ffe7d2,#ffd6bd)", borderTop: "3px solid rgba(255,255,255,0.7)", boxShadow: "inset 0 6px 10px rgba(255,255,255,0.35)", zIndex: 1 }} />
 
       {/* ---------- ROOF / AWNING valance across the top ---------- */}
       {roof && (
@@ -633,20 +665,28 @@ function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "
         </div>
       )}
 
-      {/* ---------- helper + machine flanking Ishana (on cute pedestals) ---------- */}
-      {helper && <div className={"absolute bob flex items-center justify-center rounded-2xl " + pulse("helper")} style={{ left: "5%", bottom: "19%", width: "16%", aspectRatio: "1", fontSize: 30, background: "radial-gradient(circle at 50% 40%, #ffffffcc, #ffe6f1cc)", boxShadow: "0 4px 8px rgba(0,0,0,.1)", zIndex: 4 }}>{helper.emoji}</div>}
-      {mac && <div className={"absolute " + pulse("machine")} style={{ right: "5%", bottom: "16%", width: "21%", zIndex: 4, filter: fancy(mac.rarity) ? "drop-shadow(0 0 10px gold)" : "drop-shadow(0 3px 5px rgba(0,0,0,.15))" }}>
-        <ImgOr src={ASSET.machine[mac.base]} className="w-full object-contain" fallback={<div className="flex items-center justify-center rounded-2xl" style={{ aspectRatio: "1", fontSize: 30, background: "radial-gradient(circle at 50% 40%, #ffffffcc, #e6f7ffcc)", boxShadow: "0 4px 8px rgba(0,0,0,.1)" }}>{mac.emoji}</div>} />
+      {/* ---------- machine + helper on the BACK COUNTER, left of Ishana, sitting
+           ABOVE the counter line (bottom>32%) so they stay visible, behind her
+           (z2) and clear of the customer on the right ---------- */}
+      {mac && <div className={"absolute " + pulse("machine")} style={{ left: "16%", bottom: "33%", width: "17%", zIndex: 2, filter: fancy(mac.rarity) ? "drop-shadow(0 0 10px gold)" : "drop-shadow(0 3px 5px rgba(0,0,0,.15))" }}>
+        <ImgOr src={ASSET.machine[mac.base]} className="w-full object-contain" fallback={<div className="flex items-center justify-center rounded-2xl" style={{ aspectRatio: "1", fontSize: 28, background: "radial-gradient(circle at 50% 40%, #ffffffcc, #e6f7ffcc)", boxShadow: "0 4px 8px rgba(0,0,0,.1)" }}>{mac.emoji}</div>} />
+      </div>}
+      {helper && <div className={"absolute " + (customerHappy ? "cust-happy" : "bob") + " " + pulse("helper")} style={{ left: "0%", bottom: "33%", width: "16%", zIndex: 2, filter: "drop-shadow(0 3px 5px rgba(0,0,0,.2))" }} title="Your staff">
+        <ImgOr src={STAFF_ART[helper.id]} className="w-full object-contain" fallback={<div className="flex items-center justify-center" style={{ fontSize: 30 }}>{helper.emoji}</div>} />
       </div>}
 
       {/* ---------- placed decorations (draggable in edit mode; soft base so the
            emoji reads as a placed object, not a floating glyph) ---------- */}
-      {placed.map((p) => ITEM[p.id] && (
+      {placed.map((p) => { const D = ITEM[p.id]; if (!D) return null; const zn = D.zone || "floor"; const front = zn === "floor" || zn === "counter"; const art = DECOR_ART[p.id]; const w = zn === "wall" ? "15%" : zn === "shelf" ? "12%" : "17%"; return (
         <div key={p.id} onPointerDown={editable ? (e) => onItemDown(e, p.id) : undefined} onDoubleClick={editable ? () => onUp(p.id, true) : undefined}
-          className={"absolute flex items-end justify-center " + (editable ? "cursor-grab active:cursor-grabbing" : "")} style={{ left: p.x + "%", top: p.y + "%", transform: "translate(-50%,-50%)", zIndex: 3, touchAction: "none" }} title={editable ? "Drag · double-tap to put away" : undefined}>
-          <div className="relative leading-none" style={{ fontSize: 34, filter: "drop-shadow(0 4px 3px rgba(0,0,0,.18))" }}>{ITEM[p.id].emoji}<div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: -4, width: 26, height: 7, background: "rgba(0,0,0,.12)", borderRadius: "50%" }} /></div>
+          className={"absolute flex items-end justify-center " + (editable ? "cursor-grab active:cursor-grabbing" : "")} style={{ left: p.x + "%", top: p.y + "%", transform: "translate(-50%,-50%)", zIndex: front ? 6 : 3, width: art ? w : undefined, touchAction: "none" }} title={editable ? "Drag · double-tap to put away" : undefined}>
+          {art ? (
+            <div className="relative w-full" style={{ filter: "drop-shadow(0 4px 4px rgba(0,0,0,.18))" }}><ImgOr src={art} className="w-full object-contain" fallback={<div style={{ fontSize: front ? 34 : 30 }}>{D.emoji}</div>} />{front && <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: -2, width: "55%", height: 6, background: "rgba(0,0,0,.1)", borderRadius: "50%" }} />}</div>
+          ) : (
+            <div className="relative leading-none" style={{ fontSize: front ? 34 : 30, filter: "drop-shadow(0 4px 3px rgba(0,0,0,.18))" }}>{D.emoji}{front && <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: -4, width: 26, height: 7, background: "rgba(0,0,0,.12)", borderRadius: "50%" }} />}</div>
+          )}
         </div>
-      ))}
+      ); })}
       {ghostDecor && <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 preview-pulse" style={{ fontSize: 42, opacity: 0.55, zIndex: 3 }}>{ghostDecor.emoji}</div>}
 
       {/* ---------- ISHANA — behind the counter, left-of-centre so the customer
@@ -663,10 +703,18 @@ function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "
         <ImgOr src={ASSET.counter} className="w-full h-full" style={{ objectFit: "cover", objectPosition: "center 30%", filter: counter ? counter.filter : "none" }} fallback={<div style={{ height: "100%", background: "linear-gradient(" + (counter ? counter.color : I.counter) + "," + (counter ? counter.color : I.counter) + "cc)", borderTop: "5px solid #fff" }} />} />
       </div>
 
-      {/* ---------- CUSTOMER — serve mode only, big enough to feel real ---------- */}
+      {/* ---------- PET — own zone, front bottom-left, always ≥90% visible
+           (in front of the counter, clear of Ishana & the customer) ---------- */}
+      {pet && ITEM[pet] && (
+        <div className="absolute pet-hop flex items-end justify-center" style={{ left: "4%", bottom: "3%", zIndex: 6 }} title="Your pet">
+          <div className="relative leading-none" style={{ fontSize: 42, filter: "drop-shadow(0 4px 4px rgba(0,0,0,.22))" }}>{ITEM[pet].emoji}<div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: 0, width: 30, height: 7, background: "rgba(0,0,0,.12)", borderRadius: "50%" }} /></div>
+        </div>
+      )}
+
+      {/* ---------- CUSTOMER — serve mode only; slides in, faces Ishana ---------- */}
       {mode === "serve" && customer && (
-        <div className="absolute" style={{ right: "0%", bottom: "4%", width: "48%", zIndex: 6 }}>
-          <CustomerView customer={customer} state={freeze ? "freeze" : "wait"} />
+        <div key={custKey} className="absolute cust-enter" style={{ right: "0%", bottom: "4%", width: "48%", zIndex: 7 }}>
+          <CustomerView customer={customer} state={freeze ? "freeze" : customerHappy ? "happy" : "wait"} />
         </div>
       )}
 
@@ -820,7 +868,7 @@ function DecoratePage({ save, setSave, sounds, world, tierIdx }) {
   const placedIds = save.placed.map((p) => p.id);
 
   const celebrate = (rarity) => { if (["rare", "epic", "legendary", "dream"].includes(rarity)) { sounds.rare(); sounds.sparkle(); setBoom(rarity); setTimeout(() => setBoom(false), 1700); } else sounds.upgrade(); };
-  const place = (id) => { setSave((s) => (s.placed.find((p) => p.id === id) ? s : { ...s, placed: [...s.placed, { id, x: 30 + Math.random() * 40, y: 46 + Math.random() * 22 }] })); sounds.pop(); };
+  const place = (id) => { setSave((s) => (s.placed.find((p) => p.id === id) || s.placed.length >= MAX_PLACED ? s : { ...s, placed: [...s.placed, { id, ...zonePos(ITEM[id] && ITEM[id].zone) }] })); sounds.pop(); };
   const onItemDown = (e, id) => { const r = sceneRef.current.getBoundingClientRect(); drag.current = { id, r }; if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); };
   const onMove = (e) => { if (!drag.current) return; const { id, r } = drag.current; const x = clamp(((e.clientX - r.left) / r.width) * 100, 4, 96), y = clamp(((e.clientY - r.top) / r.height) * 100, 8, 84); setSave((s) => ({ ...s, placed: s.placed.map((p) => (p.id === id ? { ...p, x, y } : p)) })); };
   const onUp = (maybeId, rm) => { if (rm && typeof maybeId === "string") setSave((s) => ({ ...s, placed: s.placed.filter((p) => p.id !== maybeId) })); drag.current = null; };
@@ -837,10 +885,11 @@ function DecoratePage({ save, setSave, sounds, world, tierIdx }) {
   const buyFocused = () => {
     const i = focus; if (!i || save.coins < i.cost) return;
     celebrate(i.rarity);
+    if (i.cat === "helper") { sounds.fanfare(); setBoom(i.rarity || "rare"); } // hiring a helper feels like a milestone
     setSave((s) => {
       const ns = { ...s, coins: s.coins - i.cost, owned: [...s.owned, i.id] };
       if (isSlot(i.cat)) ns.shop = { ...s.shop, [i.cat]: i.id };
-      else ns.placed = [...s.placed, { id: i.id, x: 30 + Math.random() * 40, y: 46 + Math.random() * 22 }];
+      else ns.placed = s.placed.length >= MAX_PLACED ? s.placed : [...s.placed, { id: i.id, ...zonePos(i.zone) }];
       return ns;
     });
     setFocus(null);
@@ -1036,8 +1085,10 @@ function IshanaShop() {
   const onSolve = useCallback((opts = {}) => {
     if (feedback) return; setFeedback("correct");
     const themeBonus = 1 + THEMES.filter((t) => themeDone(save.owned, t)).length * 0.1;
+    const helperItem = save.shop.helper && ITEM[save.shop.helper];
+    const staffMult = helperItem ? 1 + ({ common: 0.08, rare: 0.15, epic: 0.25, legendary: 0.4, dream: 0.5 }[helperItem.rarity] || 0) : 1; // staff actually boost earnings
     const mult = (event ? event.mult : 1) * (customer.isRare ? 2 : 1), sb = streak >= 2 ? 1.5 : 1;
-    const coinsGain = Math.round((10 + save.level * 2 + (opts.bonusCoins || 0) * 3) * mult * sb * themeBonus);
+    const coinsGain = Math.round((10 + save.level * 2 + (opts.bonusCoins || 0) * 3) * mult * sb * themeBonus * staffMult);
     const starsGain = 1 + (streak > 0 && streak % 4 === 3 ? 1 : 0) + (customer.isRare ? 1 : 0);
     setReward({ coins: coinsGain, stars: starsGain }); setStreak((s) => s + 1);
     sounds.ding(); sounds.correct(); setShowConfetti(true); setShake(true);
@@ -1126,7 +1177,7 @@ function IshanaShop() {
                   {event && <div className="shrink-0 mb-1 text-center text-xs font-black py-1 rounded-full text-white banner-pop" style={{ background: event.type === "rainbow" ? "linear-gradient(90deg,#ff5c93,#ffd93d,#7ed957,#4dd0e1,#a06bff)" : "#ff5c93" }}>{event.label}</div>}
                   {streak >= 2 && !feedback && <div className="shrink-0 mb-1 text-center text-xs font-black" style={{ color: "#ff7e1d" }}>🔥 Streak x{streak}!</div>}
                   <div className="flex-1 min-h-0">
-                    <StorefrontScene tierIdx={tierIdx} world={world} shop={save.shop} placed={save.placed} equipped={save.equipped} pet={save.pet} ishanaMood={feedback === "correct" ? "cheer" : brainFreeze ? "freeze" : "idle"} customer={customer} freeze={brainFreeze} height="100%">
+                    <StorefrontScene tierIdx={tierIdx} world={world} shop={save.shop} placed={save.placed} equipped={save.equipped} pet={save.pet} ishanaMood={feedback === "correct" ? "cheer" : brainFreeze ? "freeze" : "idle"} customer={customer} customerHappy={feedback === "correct"} custKey={roundKey} freeze={brainFreeze} height="100%">
                       {showNyam && <div className="absolute left-1/2 -translate-x-1/2 text-5xl font-black nyam" style={{ top: "42%", zIndex: 9, color: "#ff3d77" }}>NYAM!</div>}
                       {reward && <div className="absolute top-2 right-2 text-right reward-float" style={{ zIndex: 9 }}><div className="text-lg font-black" style={{ color: "#ff9f1d" }}>+{reward.coins} 🪙</div><div className="text-md font-black" style={{ color: "#f5a300" }}>+{reward.stars} ⭐</div></div>}
                     </StorefrontScene>
@@ -1188,6 +1239,16 @@ function StyleKeyframes() {
       .ishana-dance{animation:danceAnim .5s ease-in-out infinite}
       @keyframes previewPulse {0%,100%{filter:brightness(1);outline-color:rgba(160,107,255,0)}50%{filter:brightness(1.12);outline-color:rgba(160,107,255,.9)}}
       .preview-pulse{outline:3px dashed rgba(160,107,255,0);outline-offset:2px;border-radius:10px;animation:previewPulse .9s ease-in-out infinite}
+      @keyframes custEnter {0%{transform:translateX(60%) scale(.7);opacity:0}60%{transform:translateX(-4%) scale(1.04)}100%{transform:translateX(0) scale(1);opacity:1}}
+      .cust-enter{animation:custEnter .55s cubic-bezier(.3,1.3,.5,1) both}
+      @keyframes custHappy {0%,100%{transform:translateY(0) rotate(0)}30%{transform:translateY(-14px) rotate(-3deg)}60%{transform:translateY(-4px) rotate(3deg)}}
+      .cust-happy{animation:custHappy .5s ease-in-out 2}
+      @keyframes heartFloat {0%{transform:translateY(0) scale(.4);opacity:0}25%{opacity:1}100%{transform:translateY(-46px) scale(1.1);opacity:0}}
+      .heart-float{animation:heartFloat 1.1s ease-out forwards}
+      @keyframes petHop {0%,72%,100%{transform:translateY(0)}82%{transform:translateY(-12px)}90%{transform:translateY(0)}}
+      .pet-hop{animation:petHop 2.6s ease-in-out infinite}
+      @keyframes orderBob {0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+      .order-bob{animation:orderBob 1.6s ease-in-out infinite}
       @keyframes scoopPop {0%{transform:scale(0) translateY(-20px)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
       .scoop-pop{animation:scoopPop .35s cubic-bezier(.34,1.56,.64,1)}
       @keyframes counterPop {0%{transform:scale(.4);opacity:0}60%{transform:scale(1.3)}100%{transform:scale(1);opacity:1}}
