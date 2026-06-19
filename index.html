@@ -11,10 +11,14 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Cute rounded display font (kid-friendly) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <style>
       html, body, #root { height: 100%; margin: 0; }
       html, body { overflow: hidden; position: fixed; width: 100%; overscroll-behavior: none; touch-action: manipulation; }
-      body { -webkit-tap-highlight-color: transparent; }
+      body { -webkit-tap-highlight-color: transparent; font-family: 'Baloo 2', ui-rounded, 'Segoe UI', system-ui, sans-serif; }
     </style>
   </head>
   <body>
@@ -37,6 +41,11 @@
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 const ISHANA_FACE_SRC = "ishana_face.png";
+// Painted art assets (AI-generated). If a file is missing, code-drawn art is used.
+const ASSET = { hero: "assets/ishana-hero.png", exterior: "assets/shop-exterior.png", logo: "assets/logo.png", counter: "assets/counter.png", menu: "assets/menu-bg.png", window: "assets/window.png", shelf: "assets/shelf.png", machine: { basic: "assets/machine-basic.png", rainbow: "assets/machine-rainbow.png", magic: "assets/machine-magic.png", gold: "assets/machine-gold.png" } };
+// Painted full-look outfit variants (a dress id -> painted Ishana image).
+const OUTFITS = { dress_pinkprincess: "assets/outfit-princess.png", dress_chef: "assets/outfit-chef.png", dress_doctor: "assets/outfit-doctor.png", dress_fairy: "assets/outfit-fairy.png", dress_unicorn: "assets/outfit-unicorn.png", dress_rainbow: "assets/outfit-rainbow.png" };
+const ishanaImg = (eq) => (eq && eq.dress && OUTFITS[eq.dress]) || ASSET.hero;
 const SAVE_KEY = "ishana_shop_save_v5";
 
 /* ============================== CORE DATA ================================ */
@@ -125,11 +134,11 @@ const CATALOG = [
   it("rainbow", "window", "Rainbow Window", "epic", { icon: "🌈" }),
 
   /* ---- INTERIOR ---- */
-  it("wood", "counter", "Wooden Counter", "common", { color: "#b5824a" }),
-  it("pink", "counter", "Pink Counter", "common", { color: "#ff9ec4" }),
-  it("candy", "counter", "Candy Counter", "rare", { color: "#ff6fae" }),
-  it("crystal", "counter", "Crystal Counter", "epic", { color: "#a8eef5" }),
-  it("gold", "counter", "Golden Counter", "legendary", { color: "#ffd24d" }),
+  it("wood", "counter", "Wooden Counter", "common", { color: "#b5824a", filter: "sepia(.6) saturate(1.5) hue-rotate(-18deg) brightness(.92)" }),
+  it("pink", "counter", "Pink Counter", "common", { color: "#ff9ec4", filter: "none" }),
+  it("candy", "counter", "Candy Counter", "rare", { color: "#ff6fae", filter: "saturate(1.35) hue-rotate(-8deg)" }),
+  it("crystal", "counter", "Crystal Counter", "epic", { color: "#a8eef5", filter: "hue-rotate(150deg) saturate(1.1) brightness(1.06)" }),
+  it("gold", "counter", "Golden Counter", "legendary", { color: "#ffd24d", filter: "sepia(.85) saturate(2.4) hue-rotate(-12deg) brightness(1.06)" }),
 
   it("wood", "floor", "Wood Floor", "common", { bg: "repeating-linear-gradient(90deg,#caa06a 0 38px,#b88a55 38px 40px)" }),
   it("pinktile", "floor", "Pink Tile", "common", { bg: "repeating-conic-gradient(#ffd6e8 0% 25%,#ffb6d9 0% 50%) 0/40px 40px" }),
@@ -265,6 +274,8 @@ const themeDone = (owned, t) => t.items.every((id) => owned.includes(id));
 
 const MODES = ["pattern", "counting", "addition", "memory", "sorting", "speed", "mega"];
 const MODE_LABELS = { pattern: "Pattern", counting: "Counting", addition: "Add Up", memory: "Memory", sorting: "Catch!", speed: "Speed", mega: "Mega" };
+// Short spoken cue per mode so pre-readers know the task without reading.
+const MODE_NARRATION = { pattern: "What comes next?", counting: "Give the right scoops!", addition: "How many scoops in total?", memory: "Remember the order!", sorting: "Catch the right colour!", speed: "Quick! Tap the right flavour!", mega: "Build a big tower!" };
 const DAILY_REWARDS = [
   { emoji: "🪙", label: "+50 Coins", coins: 50 }, { emoji: "🪙", label: "+80 Coins", coins: 80 }, { emoji: "🎀", label: "Free Bow", grant: "acc_bow" },
   { emoji: "🪙", label: "+120 Coins", coins: 120 }, { emoji: "🪴", label: "Free Plant", grant: "decor_flowerpot" }, { emoji: "🐰", label: "Free Pet", grant: "pet_bunny" }, { emoji: "🏆", label: "+250 Coins", coins: 250 },
@@ -276,14 +287,17 @@ const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const today = () => new Date().toDateString();
 function tierIndexForLevel(level) { let i = 0; SHOP_TIERS.forEach((t, k) => { if (level >= t.min) i = k; }); return i; }
-function defaultSave() { return { level: 1, coins: 80, stars: 0, xp: 0, best: 0, met: [], rares: [], owned: [], equipped: { dress: null, shoes: null, acc: null, hat: null }, shop: {}, pet: null, placed: [], daily: { last: null, day: 0 } }; }
+function defaultSave() { return { level: 1, coins: 80, stars: 0, xp: 0, best: 0, met: [], rares: [], owned: [], equipped: { dress: null, shoes: null, acc: null, hat: null }, shop: {}, pet: null, placed: [], daily: { last: null, day: 0 }, mission: { date: null, served: 0, rewarded: false }, seenIntro: false }; }
+const MISSION_TARGET = 5, MISSION_BONUS = 120;
 function loadSave() { try { const r = localStorage.getItem(SAVE_KEY); if (r) return { ...defaultSave(), ...JSON.parse(r) }; } catch (e) {} return defaultSave(); }
 const persist = (s) => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch (e) {} };
 
 /* ============================== AUDIO ==================================== */
 function useSounds() {
   const ctxRef = useRef(null);
-  const getCtx = () => { if (!ctxRef.current) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) ctxRef.current = new AC(); } if (ctxRef.current && ctxRef.current.state === "suspended") ctxRef.current.resume(); return ctxRef.current; };
+  const mutedRef = useRef(false);
+  const musicRef = useRef(null);
+  const getCtx = () => { if (mutedRef.current) return null; if (!ctxRef.current) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) ctxRef.current = new AC(); } if (ctxRef.current && ctxRef.current.state === "suspended") ctxRef.current.resume(); return ctxRef.current; };
   const tone = (f, s, d, t = "sine", g = 0.16) => { const c = getCtx(); if (!c) return; const t0 = c.currentTime + s, o = c.createOscillator(), gn = c.createGain(); o.type = t; o.frequency.setValueAtTime(f, t0); gn.gain.setValueAtTime(0.0001, t0); gn.gain.exponentialRampToValueAtTime(g, t0 + 0.02); gn.gain.exponentialRampToValueAtTime(0.0001, t0 + d); o.connect(gn).connect(c.destination); o.start(t0); o.stop(t0 + d + 0.05); };
   const slide = (a, b, d, t = "sine", g = 0.2) => { const c = getCtx(); if (!c) return; const t0 = c.currentTime, o = c.createOscillator(), gn = c.createGain(); o.type = t; o.frequency.setValueAtTime(a, t0); o.frequency.exponentialRampToValueAtTime(b, t0 + d); gn.gain.setValueAtTime(g, t0); gn.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.02); o.connect(gn).connect(c.destination); o.start(t0); o.stop(t0 + d + 0.05); };
   return useMemo(() => ({
@@ -301,6 +315,13 @@ function useSounds() {
     ding: () => { tone(1318, 0, 0.16, "sine", 0.18); tone(1760, 0.08, 0.22, "sine", 0.16); }, // order done
     yay: () => [784, 988, 1318].forEach((f, i) => tone(f, i * 0.07, 0.18, "triangle", 0.16)),  // customer happy
     sparkle: () => [1568, 2093, 2637].forEach((f, i) => tone(f, i * 0.05, 0.14, "sine", 0.1)), // topping/magic
+    setMuted: (m) => { mutedRef.current = m; if (m) { if (musicRef.current) { clearInterval(musicRef.current); musicRef.current = null; } if (window.speechSynthesis) try { window.speechSynthesis.cancel(); } catch (e) {} } },
+    isMuted: () => mutedRef.current,
+    // Gentle ambient pad loop (very low volume), synthesised — no audio files.
+    startMusic: () => { if (mutedRef.current || musicRef.current) return; const c = getCtx(); if (!c) return; const seq = [[392, 0], [523, 1.4], [440, 2.8], [587, 4.2]]; const loop = () => { if (mutedRef.current) return; const t0 = c.currentTime; seq.forEach(([f, t]) => { const o = c.createOscillator(), g = c.createGain(); o.type = "sine"; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t0 + t); g.gain.exponentialRampToValueAtTime(0.03, t0 + t + 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t0 + t + 1.3); o.connect(g).connect(c.destination); o.start(t0 + t); o.stop(t0 + t + 1.4); }); }; loop(); musicRef.current = setInterval(loop, 5600); },
+    stopMusic: () => { if (musicRef.current) { clearInterval(musicRef.current); musicRef.current = null; } },
+    // Voice narration so PRE-READERS (age 4–6) can play without reading.
+    speak: (text) => { if (mutedRef.current || !window.speechSynthesis) return; try { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 0.92; u.pitch = 1.25; u.volume = 0.95; window.speechSynthesis.speak(u); } catch (e) {} },
   }), []);
 }
 
@@ -350,6 +371,12 @@ function IshanaFace({ size = 110, mood = "happy", cap = true }) {
     </div>
   );
 }
+/* <img> that falls back to drawn art if the file is missing. */
+function ImgOr({ src, className = "", style = {}, fallback = null }) {
+  const [ok, setOk] = useState(true);
+  if (!ok) return fallback;
+  return <img src={src} alt="" draggable={false} onError={() => setOk(false)} className={className} style={style} />;
+}
 function FullIshana({ equipped, pet, size = 128, mood = "idle" }) {
   const dress = equipped.dress && ITEM[equipped.dress], shoes = equipped.shoes && ITEM[equipped.shoes], acc = equipped.acc && ITEM[equipped.acc], hat = equipped.hat && ITEM[equipped.hat];
   const W = size, H = size * 1.58, head = size * 0.66, skin = "#ffe0cf";
@@ -397,6 +424,20 @@ function FullIshana({ equipped, pet, size = 128, mood = "idle" }) {
       {acc && acc.place === "side" && <div className="absolute" style={{ top: H * 0.46, left: W * 0.03, zIndex: 0, fontSize: size * 0.3 }}>{acc.emoji}</div>}
       {acc && acc.place === "neck" && <div className="absolute left-1/2 -translate-x-1/2" style={{ top: H * 0.36, zIndex: 5, fontSize: size * 0.24 }}>{acc.emoji}</div>}
       {pet && <div className="absolute bob" style={{ bottom: 0, right: -W * 0.12, fontSize: size * 0.4, zIndex: 5 }}>{ITEM[pet].emoji}</div>}
+    </div>
+  );
+}
+
+/* Painted Ishana that swaps her whole look per equipped outfit; falls back to
+ * the code-drawn FullIshana for dresses without a painted variant. */
+function IshanaAvatar({ equipped, pet, size = 130, mood = "idle" }) {
+  const painted = (equipped.dress && OUTFITS[equipped.dress]) || (!equipped.dress ? ASSET.hero : null);
+  if (!painted) return <FullIshana equipped={equipped} pet={pet} size={size} mood={mood} />;
+  const H = size * 1.55;
+  return (
+    <div className="relative inline-block" style={{ height: H }}>
+      <ImgOr src={painted} className={"object-contain h-full " + (mood === "cheer" ? "ishana-cheer" : "bob")} style={{ filter: "drop-shadow(0 5px 8px rgba(0,0,0,0.15))" }} fallback={<FullIshana equipped={equipped} pet={null} size={size} mood={mood} />} />
+      {pet && <div className="absolute bob" style={{ right: -size * 0.05, bottom: 0, fontSize: size * 0.4 }}>{ITEM[pet].emoji}</div>}
     </div>
   );
 }
@@ -513,8 +554,14 @@ function ChibiAnimal({ type, state, size = 120 }) {
     </div>
   );
 }
-function CustomerView({ customer, state }) {
-  return <div className="relative flex flex-col items-center">{customer.golden && <div className="absolute -inset-3 golden-glow" />}<div className="relative"><ChibiAnimal type={customer.type} state={state} /></div></div>;
+function CustomerView({ customer, state, size }) {
+  const cls = state === "freeze" ? "shiver" : "bob";
+  // size given → fixed px; otherwise fill the parent's WIDTH (the scene is tall
+  // and narrow, so width is the limiting dimension for these square sprites)
+  const imgStyle = size ? { width: size, height: size } : { width: "100%", height: "auto" };
+  return <div className="relative w-full flex items-end justify-center">{customer.golden && <div className="absolute -inset-3 golden-glow" />}
+    <ImgOr src={"assets/animal-" + customer.type + ".png"} className={cls + " object-contain"} style={{ ...imgStyle, filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.15))" }} fallback={<div className={cls}><ChibiAnimal type={customer.type} state={state} size={size || 150} /></div>} />
+  </div>;
 }
 
 function Confetti({ show, big }) {
@@ -525,200 +572,166 @@ function Confetti({ show, big }) {
 function RarityBadge({ rarity }) { return <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full text-white" style={{ background: RARITY[rarity].color }}>{RARITY[rarity].name}</span>; }
 
 /* ============================== THE SHOP SCENE =========================== */
-/* Storefront that grows from a tiny cart into a grand parlour, fully driven by
- * the chosen slot upgrades (sign/roof/entrance/window/counter/floor/wall/
- * ceiling/machine/helper) plus the decorations the child places.            */
-function ShopScene({ tierIdx, world, shop, placed, editable, height = 300, onItemDown, onMove, onUp, sceneRef, children }) {
+/* ONE shop, shared by the Serve tab (mode="serve" — a customer waits at the
+ * counter) and the Upgrade tab (mode="edit" — decor is draggable and the
+ * focused catalog item is previewed live). Every slot upgrade — sign, roof,
+ * window, counter, wall, machine, helper, ceiling — paints a REAL layer here,
+ * so buying something visibly transforms the very shop you serve in.
+ * Layers are sized against Ishana (~62% of the scene = the size reference).  */
+function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "idle", customer, freeze, mode = "serve", preview, editable, height = 300, onItemDown, onMove, onUp, sceneRef, children }) {
   const I = INTERIORS[tierIdx];
-  const S = (k) => (shop[k] ? ITEM[shop[k]] : null);
+  // effective slot item: a live-preview item temporarily overrides its slot
+  const S = (k) => (preview && preview.cat === k ? preview : (shop[k] ? ITEM[shop[k]] : null));
   const sign = S("sign"), roof = S("roof"), ent = S("entrance"), win = S("window"), counter = S("counter"), floor = S("floor"), wall = S("wall"), ceil = S("ceiling"), mac = S("machine"), helper = S("helper");
   const tubs = ["#ff6b9d", "#7ed957", "#ffd93d", "#4dd0e1"];
-  const roofBg = roof ? (roof.rainbow ? "linear-gradient(90deg,#ff6b9d,#ffd93d,#7ed957,#4dd0e1,#a06bff)" : "repeating-linear-gradient(90deg," + roof.c1 + " 0 18px," + roof.c2 + " 18px 36px)") : null;
+  const roofBg = roof ? (roof.rainbow ? "linear-gradient(90deg,#ff6b9d,#ffd93d,#7ed957,#4dd0e1,#a06bff)" : "repeating-linear-gradient(90deg," + roof.c1 + " 0 16px," + roof.c2 + " 16px 32px)") : null;
+  const wallBg = wall ? wall.bg : I.wall;
+  const fancy = (r) => r === "epic" || r === "legendary" || r === "dream";
+  const pulse = (cat) => (preview && preview.cat === cat ? "preview-pulse " : "");
+  const ghostDecor = preview && preview.cat === "decor" ? preview : null;
+
   return (
     <div ref={sceneRef} onPointerMove={editable ? onMove : undefined} onPointerUp={editable ? onUp : undefined} onPointerLeave={editable ? onUp : undefined}
-      className="relative rounded-[1.6rem] overflow-hidden shadow-2xl select-none" style={{ height, border: "4px solid #ffd1e3", touchAction: editable ? "none" : "auto" }}>
-      {/* wall */}
-      <div className="absolute inset-0" style={{ background: wall ? wall.bg : I.wall }} />
-      {!wall && <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(90deg, rgba(255,150,190,0.16) 0 18px, transparent 18px 36px)" }} />}
-      <div className="absolute inset-0 opacity-20" style={{ backgroundImage: (wall && wall.dark) ? "radial-gradient(#ffffff66 1px,transparent 1px)" : "radial-gradient(#ffffff 2px, transparent 2px)", backgroundSize: "26px 26px" }} />
-      {/* hanging pendant lamps */}
-      <div className="absolute left-0 right-0 flex justify-around px-6" style={{ top: 0, zIndex: 1 }}>{[0, 1, 2].map((i) => (<div key={i} className="flex flex-col items-center"><div style={{ width: 2, height: 10, background: "#cfa9a9" }} /><div style={{ width: 18, height: 12, borderRadius: "0 0 50% 50%", background: "linear-gradient(#ff9ec4,#ff7eb3)", boxShadow: "0 5px 10px rgba(255,150,190,.45)" }} /></div>))}</div>
+      className="relative rounded-[1.6rem] overflow-hidden shadow-2xl select-none w-full" style={{ height, minHeight: 200, border: "4px solid #ffd1e3", touchAction: editable ? "none" : "auto" }}>
 
-      {/* roof / awning (or a starter umbrella for the tiny cart) */}
-      {roof ? (
-        <div className="absolute top-0 left-0 right-0" style={{ height: 18, background: roofBg, zIndex: 4 }}>
-          {roof.castle && <div className="flex justify-around">{Array.from({ length: 9 }).map((_, i) => <div key={i} style={{ width: 8, height: 7, marginTop: -6, background: roof.c1 }} />)}</div>}
+      {/* ---------- WALL (colour driven by the wall upgrade / theme) ---------- */}
+      <div className={"absolute inset-0 " + pulse("wall")} style={{ background: wallBg }} />
+      <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(90deg, rgba(255,255,255,0.5) 0 28px, rgba(255,255,255,0) 28px 56px)" }} />
+      <div className="absolute inset-0 opacity-15" style={{ backgroundImage: (wall && wall.dark) ? "radial-gradient(#ffffff66 1px,transparent 1px)" : "radial-gradient(#ffffff 2px, transparent 2px)", backgroundSize: "28px 28px" }} />
+
+      {/* ---------- FLOOR band (peeks above the counter; styled by floor upgrade) ---------- */}
+      <div className={"absolute left-0 right-0 bottom-0 " + pulse("floor")} style={{ height: "38%", background: floor ? floor.bg : "linear-gradient(" + I.floor + "," + I.floor + "dd)", borderTop: "3px solid rgba(255,255,255,0.5)", zIndex: 1 }} />
+
+      {/* ---------- ROOF / AWNING valance across the top ---------- */}
+      {roof && (
+        <div className={"absolute top-0 left-0 right-0 " + pulse("roof")} style={{ height: "6.5%", background: roofBg, zIndex: 4, boxShadow: roof.glow ? "0 0 16px 3px " + roof.glow : "0 3px 8px rgba(0,0,0,0.12)" }}>
+          <div className="absolute left-0 right-0 flex justify-around" style={{ bottom: -6 }}>{Array.from({ length: 12 }).map((_, i) => <div key={i} style={{ width: 11, height: 11, borderRadius: 99, background: roof.rainbow ? ["#ff6b9d", "#ffd93d", "#7ed957", "#4dd0e1", "#a06bff"][i % 5] : (i % 2 ? (roof.c2 || "#fff") : (roof.c1 || "#ff8fb3")) }} />)}</div>
         </div>
-      ) : (<div className="absolute left-1/2 -translate-x-1/2 text-3xl" style={{ top: 0, zIndex: 4 }}>⛱️</div>)}
+      )}
 
-      {/* ceiling decorations */}
-      {ceil && <div className="absolute left-0 right-0 text-center text-base tracking-[0.5em]" style={{ top: 18, zIndex: 4 }}>{ceil.emoji}{ceil.emoji}{ceil.emoji}{ceil.emoji}</div>}
+      {/* ---------- ceiling dangle ---------- */}
+      {ceil && <div className={"absolute left-0 right-0 text-center tracking-[0.6em] " + pulse("ceiling")} style={{ top: roof ? "8%" : "1%", fontSize: 15, zIndex: 4 }}>{ceil.emoji}{ceil.emoji}{ceil.emoji}{ceil.emoji}</div>}
 
-      {/* sign */}
-      <div className="absolute left-1/2 -translate-x-1/2 px-3 py-1 rounded-xl text-[11px] font-black text-white shadow text-center" style={{ top: "10%", whiteSpace: "nowrap", zIndex: 4, background: sign ? sign.bg : "#ff7eb3", boxShadow: sign && sign.glow ? "0 0 14px 3px " + sign.glow : undefined }}>{sign && sign.tag ? sign.tag + " " : "🍦 "}Ishana's Ice Cream</div>
+      {/* ---------- WALL SIGN (always there; the sign upgrade restyles it) ---------- */}
+      <div className={"absolute left-1/2 -translate-x-1/2 px-3 py-1 rounded-xl text-[11px] font-black text-white shadow text-center " + pulse("sign") + (sign && fancy(sign.rarity) ? "ishana-cheer" : "")} style={{ top: roof ? "10%" : "4%", whiteSpace: "nowrap", zIndex: 4, background: sign ? sign.bg : "#ff7eb3", boxShadow: sign && sign.glow ? "0 0 16px 4px " + sign.glow : "0 2px 6px rgba(0,0,0,.15)" }}>{sign && sign.tag ? sign.tag + " " : "🍦 "}Ishana's Ice Cream</div>
 
-      {/* window */}
-      <div className="absolute" style={{ left: "8%", top: "22%", width: "30%", height: "30%", borderRadius: 12, background: "linear-gradient(" + world.sky[0] + "," + world.sky[1] + ")", border: "5px solid #fff", overflow: "hidden", zIndex: 2 }}>
-        <div className="absolute" style={{ top: 4, right: 6, fontSize: 18 }}>{world.sun}</div>
-        <div className="absolute" style={{ bottom: 2, left: 6, fontSize: 20 }}>{world.out}</div>
-        {win && win.icon && <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl">{win.icon}</div>}
-        <div className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2" style={{ width: 3, background: "#fff" }} />
-        <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2" style={{ height: 3, background: "#fff" }} />
+      {/* ---------- WINDOW (small, high-left — background decoration) ---------- */}
+      <div className={"absolute " + pulse("window")} style={{ left: "5%", top: roof ? "15%" : "10%", width: "26%", zIndex: 1, filter: win && win.icon ? "drop-shadow(0 0 8px rgba(255,210,90,.7))" : "drop-shadow(0 3px 5px rgba(0,0,0,.08))" }}>
+        <ImgOr src={ASSET.window} className="w-full object-contain" fallback={<div style={{ aspectRatio: "0.85", borderRadius: 12, background: "linear-gradient(" + world.sky[0] + "," + world.sky[1] + ")", border: "5px solid #fff" }} />} />
+        {win && win.icon && <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ fontSize: 20 }}>{win.icon}</div>}
       </div>
 
-      {/* entrance arch on the right wall */}
-      {ent && <div className="absolute leading-none text-center" style={{ right: "4%", top: "20%", fontSize: 22, zIndex: 2 }}>{ent.emoji}<br />{ent.emoji}<br />{ent.emoji}</div>}
-
-      {/* ice-cream shelf */}
-      <div className="absolute" style={{ right: "8%", top: "16%", width: "30%", zIndex: 2 }}>
-        <div className="flex gap-1.5 justify-center">{tubs.map((c, i) => <div key={i} className="rounded-md" style={{ width: 15, height: 19, background: c, boxShadow: "inset 0 -4px 4px rgba(0,0,0,.12)" }}><div className="rounded-t-md" style={{ height: 6, background: "rgba(255,255,255,.6)" }} /></div>)}</div>
-        <div className="mt-1 rounded" style={{ height: 5, background: "#c98f5a" }} />
+      {/* ---------- SHELF with topping jars (small, high-right) ---------- */}
+      <div className="absolute" style={{ right: "4%", top: roof ? "14%" : "9%", width: "30%", zIndex: 1, filter: "drop-shadow(0 3px 5px rgba(0,0,0,.08))" }}>
+        <ImgOr src={ASSET.shelf} className="w-full object-contain" fallback={<div className="flex gap-1.5 justify-center">{tubs.map((c, i) => <div key={i} style={{ width: 15, height: 19, background: c, borderRadius: 4 }} />)}</div>} />
       </div>
 
-      {/* floor */}
-      <div className="absolute bottom-0 left-0 right-0" style={{ height: "30%", background: floor ? floor.bg : "linear-gradient(" + I.floor + "," + I.floor + "dd)", borderTop: "3px solid rgba(0,0,0,0.1)" }} />
+      {/* ---------- entrance / door on the wall (styled as a real doorway) ---------- */}
+      {ent && (
+        <div className={"absolute " + pulse("entrance")} style={{ left: "2%", bottom: "30%", width: "13%", zIndex: 1 }}>
+          <div className="rounded-t-2xl flex items-end justify-center" style={{ aspectRatio: "0.6", background: "linear-gradient(#ffd9ec,#ffc2e0)", border: "3px solid #fff", boxShadow: "0 3px 6px rgba(0,0,0,.12)" }}><span style={{ fontSize: 18, marginBottom: 4 }}>{ent.emoji}</span></div>
+        </div>
+      )}
 
-      {/* placed decorations */}
+      {/* ---------- helper + machine flanking Ishana (on cute pedestals) ---------- */}
+      {helper && <div className={"absolute bob flex items-center justify-center rounded-2xl " + pulse("helper")} style={{ left: "5%", bottom: "19%", width: "16%", aspectRatio: "1", fontSize: 30, background: "radial-gradient(circle at 50% 40%, #ffffffcc, #ffe6f1cc)", boxShadow: "0 4px 8px rgba(0,0,0,.1)", zIndex: 4 }}>{helper.emoji}</div>}
+      {mac && <div className={"absolute " + pulse("machine")} style={{ right: "5%", bottom: "16%", width: "21%", zIndex: 4, filter: fancy(mac.rarity) ? "drop-shadow(0 0 10px gold)" : "drop-shadow(0 3px 5px rgba(0,0,0,.15))" }}>
+        <ImgOr src={ASSET.machine[mac.base]} className="w-full object-contain" fallback={<div className="flex items-center justify-center rounded-2xl" style={{ aspectRatio: "1", fontSize: 30, background: "radial-gradient(circle at 50% 40%, #ffffffcc, #e6f7ffcc)", boxShadow: "0 4px 8px rgba(0,0,0,.1)" }}>{mac.emoji}</div>} />
+      </div>}
+
+      {/* ---------- placed decorations (draggable in edit mode; soft base so the
+           emoji reads as a placed object, not a floating glyph) ---------- */}
       {placed.map((p) => ITEM[p.id] && (
         <div key={p.id} onPointerDown={editable ? (e) => onItemDown(e, p.id) : undefined} onDoubleClick={editable ? () => onUp(p.id, true) : undefined}
-          className={"absolute leading-none " + (editable ? "cursor-grab active:cursor-grabbing" : "")} style={{ left: p.x + "%", top: p.y + "%", transform: "translate(-50%,-50%)", fontSize: 36, zIndex: 3, touchAction: "none" }} title={editable ? "Drag · double-tap to put away" : undefined}>{ITEM[p.id].emoji}</div>
+          className={"absolute flex items-end justify-center " + (editable ? "cursor-grab active:cursor-grabbing" : "")} style={{ left: p.x + "%", top: p.y + "%", transform: "translate(-50%,-50%)", zIndex: 3, touchAction: "none" }} title={editable ? "Drag · double-tap to put away" : undefined}>
+          <div className="relative leading-none" style={{ fontSize: 34, filter: "drop-shadow(0 4px 3px rgba(0,0,0,.18))" }}>{ITEM[p.id].emoji}<div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: -4, width: 26, height: 7, background: "rgba(0,0,0,.12)", borderRadius: "50%" }} /></div>
+        </div>
       ))}
+      {ghostDecor && <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 preview-pulse" style={{ fontSize: 42, opacity: 0.55, zIndex: 3 }}>{ghostDecor.emoji}</div>}
 
-      {/* helper standing in the shop */}
-      {helper && <div className="absolute bob" style={{ left: "4%", bottom: "26%", fontSize: 34, zIndex: 5 }}>{helper.emoji}</div>}
-
-      {/* foreground: Ishana / customer / effects */}
-      {children}
-
-      {/* counter with glass case + machine */}
-      <div className="absolute bottom-0 left-0 right-0" style={{ height: "22%", zIndex: 7 }}>
-        <div className="absolute left-0 right-0 bottom-0" style={{ height: "100%", background: "linear-gradient(" + (counter ? counter.color : I.counter) + "," + (counter ? counter.color : I.counter) + "cc)", borderTop: "5px solid #fff" }} />
-        <div className="absolute left-3 right-3" style={{ bottom: "60%", height: 22, borderRadius: 8, background: "rgba(255,255,255,0.35)", border: "2px solid rgba(255,255,255,0.7)" }}>
-          <div className="flex gap-2 items-center h-full px-2">{["strawberry", "melon", "banana", "bubblegum"].map((f) => <Scoop key={f} flavorKey={f} size={14} />)}</div>
-        </div>
-        <div className="absolute" style={{ right: 10, bottom: 4, fontSize: 26 }}>{mac ? mac.emoji : "🍦"}</div>
-        <div className="absolute left-1/2 -translate-x-1/2 rounded-full bg-white/85 flex items-center justify-center" style={{ bottom: 4, width: 28, height: 28, border: "2px solid #fff" }}>🍦</div>
-      </div>
-    </div>
-  );
-}
-
-/* The STOREFRONT — the shop seen from the street. Ishana serves from the
- * window inside; the customer waits OUTSIDE on the sidewalk in front.        */
-function StorefrontScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood, customer, freeze, height = 300, children }) {
-  const I = INTERIORS[tierIdx];
-  const S = (k) => (shop[k] ? ITEM[shop[k]] : null);
-  const sign = S("sign"), roof = S("roof"), ent = S("entrance"), win = S("window"), counter = S("counter"), wall = S("wall"), mac = S("machine"), helper = S("helper");
-  const roofBg = roof ? (roof.rainbow ? "linear-gradient(90deg,#ff6b9d,#ffd93d,#7ed957,#4dd0e1,#a06bff)" : "repeating-linear-gradient(90deg," + roof.c1 + " 0 16px," + roof.c2 + " 16px 32px)") : null;
-  const interiorBg = wall ? wall.bg : I.wall;
-  const counterColor = counter ? counter.color : I.counter;
-  const decoEmojis = placed.map((p) => ITEM[p.id] && ITEM[p.id].emoji).filter(Boolean).slice(0, 8);
-  return (
-    <div className="relative rounded-[1.6rem] overflow-hidden shadow-2xl w-full" style={{ height, minHeight: 200, border: "4px solid #ffd1e3" }}>
-      {/* sky + far scenery */}
-      <div className="absolute inset-0" style={{ background: "linear-gradient(" + world.sky[0] + "," + world.sky[1] + ")" }} />
-      <div className="absolute" style={{ top: 8, left: 10, fontSize: 22, opacity: 0.9 }}>{world.sun}</div>
-      <div className="absolute float-slow" style={{ top: 10, left: "30%", fontSize: 20, opacity: 0.85 }}>☁️</div>
-      <div className="absolute float-slow" style={{ top: 20, right: "26%", fontSize: 16, opacity: 0.8, animationDelay: "1.5s" }}>☁️</div>
-      <div className="absolute float-slow" style={{ top: 14, right: 12, fontSize: 22, opacity: 0.85 }}>{world.out}</div>
-      {/* sidewalk (outside ground) */}
-      <div className="absolute bottom-0 left-0 right-0" style={{ height: "24%", background: "linear-gradient(#f2ead9,#ddd0bb)", borderTop: "3px solid rgba(0,0,0,0.08)", backgroundImage: "repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 46px)" }} />
-      {/* greenery + lamp post + sandwich board */}
-      <div className="absolute" style={{ bottom: "20%", left: 0, fontSize: 26 }}>🌳</div>
-      <div className="absolute" style={{ bottom: "20%", right: 0, fontSize: 26 }}>🌳</div>
-      <div className="absolute" style={{ bottom: "3%", left: "3%", fontSize: 22 }}>🪴</div>
-      <div className="absolute leading-tight text-center rounded-md px-1 py-0.5" style={{ bottom: "3%", right: "4%", fontSize: 9, fontWeight: 900, color: "#fff", background: "#5a3b2a" }}>Today's<br/>Special 🍨</div>
-
-      {/* SHOP BUILDING */}
-      <div className="absolute" style={{ left: "5%", right: "5%", top: "7%", height: "66%" }}>
-        {roof ? (
-          <div className="absolute left-[-2%] right-[-2%]" style={{ top: -10, height: 16, background: roofBg, borderRadius: "8px 8px 0 0", zIndex: 3 }}>
-            {roof.castle && <div className="flex justify-around">{Array.from({ length: 11 }).map((_, i) => <div key={i} style={{ width: 7, height: 6, marginTop: -6, background: roof.c1 }} />)}</div>}
-          </div>
-        ) : (
-          <div className="absolute left-[-3%] right-[-3%]" style={{ top: -12, height: 18, zIndex: 3, background: "repeating-linear-gradient(90deg,#ff8fb3 0 14px,#fff 14px 28px)", borderRadius: "10px 10px 0 0" }}>
-            <div className="absolute left-0 right-0 flex justify-around" style={{ bottom: -7 }}>{Array.from({ length: 11 }).map((_, i) => <div key={i} style={{ width: 13, height: 13, borderRadius: 99, background: i % 2 ? "#fff" : "#ff8fb3" }} />)}</div>
-          </div>
-        )}
-        {/* building body */}
-        <div className="absolute inset-0" style={{ background: "#fff7f0", borderRadius: "14px 14px 10px 10px", border: "3px solid #ffe0ec", boxShadow: "0 6px 14px rgba(0,0,0,0.12)" }} />
-        {/* OPEN sign */}
-        <div className="absolute rounded-md px-1.5 py-0.5 text-[8px] font-black text-white" style={{ right: "8%", top: "26%", background: "#ff5c93", zIndex: 4, transform: "rotate(-4deg)" }}>OPEN</div>
-        {/* sign */}
-        <div className="absolute left-1/2 -translate-x-1/2 px-3 py-1 rounded-xl text-[11px] font-black text-white shadow text-center" style={{ top: 5, whiteSpace: "nowrap", zIndex: 4, background: sign ? sign.bg : "#ff7eb3", boxShadow: sign && sign.glow ? "0 0 14px 3px " + sign.glow : undefined }}>{sign && sign.tag ? sign.tag + " " : "🍦 "}Ishana's Ice Cream</div>
-        {/* decorative side window */}
-        <div className="absolute" style={{ left: "6%", top: "36%", width: "18%", height: "26%", borderRadius: 8, background: "linear-gradient(" + world.sky[0] + "," + world.sky[1] + ")", border: "3px solid #fff" }}>{win && win.icon && <div className="w-full h-full flex items-center justify-center text-base">{win.icon}</div>}</div>
-        {/* door / entrance */}
-        {ent && <div className="absolute text-2xl leading-none" style={{ left: "7%", bottom: "1%" }}>{ent.emoji}</div>}
-
-        {/* SERVING WINDOW (interior visible through it) */}
-        <div className="absolute overflow-hidden" style={{ left: "32%", right: "7%", top: "28%", bottom: "8%", borderRadius: 10, background: interiorBg, border: "3px solid #fff", zIndex: 1 }}>
-          <div className="absolute left-1 right-1 flex gap-1 justify-center" style={{ top: 3 }}>{["#ff6b9d", "#7ed957", "#ffd93d", "#4dd0e1"].map((c, i) => <div key={i} style={{ width: 10, height: 13, background: c, borderRadius: 3 }} />)}</div>
-          <div className="absolute left-1 right-1 flex flex-wrap gap-0.5 justify-center" style={{ top: 19, fontSize: 12 }}>{decoEmojis.map((e, i) => <span key={i}>{e}</span>)}</div>
-          <div className="absolute" style={{ right: 3, bottom: 2, fontSize: 17 }}>{mac ? mac.emoji : "🍦"}</div>
-          {helper && <div className="absolute bob" style={{ left: 2, bottom: 2, fontSize: 17 }}>{helper.emoji}</div>}
-          <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: -8, zIndex: 2 }}><FullIshana equipped={equipped} pet={pet} size={62} mood={ishanaMood} /></div>
-        </div>
-        {/* serving counter ledge in front of the window */}
-        <div className="absolute" style={{ left: "30%", right: "5%", bottom: "-2%", height: "15%", background: "linear-gradient(" + counterColor + "," + counterColor + "cc)", borderRadius: 8, border: "2px solid #fff", zIndex: 5 }}>
-          <div className="absolute left-1 right-1 top-1 rounded" style={{ height: 7, background: "rgba(255,255,255,0.4)" }} />
-        </div>
+      {/* ---------- ISHANA — behind the counter, left-of-centre so the customer
+           has room at the counter (static wrapper keeps her centred while the
+           inner sprite bobs) ---------- */}
+      <div className="absolute" style={{ left: mode === "serve" ? "37%" : "50%", bottom: "13%", height: "62%", maxHeight: 320, zIndex: 2, transform: "translateX(-50%)" }}>
+        <ImgOr src={ishanaImg(equipped)} className={"h-full object-contain object-bottom " + (ishanaMood === "cheer" ? "ishana-cheer" : "bob")} style={{ filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.12))" }} fallback={<FullIshana equipped={equipped} pet={pet} size={92} mood={ishanaMood} />} />
       </div>
 
-      {/* CUSTOMER — outside, in front of the serving counter */}
-      <div className="absolute" style={{ left: "44%", bottom: "3%", zIndex: 6, transform: "scale(0.8)", transformOrigin: "bottom center" }}>
-        <CustomerView customer={customer} state={freeze ? "freeze" : "wait"} />
+      {/* ---------- COUNTER (front; sized by scene height so it stays ~32% in
+           both the tall Serve view and the shorter edit view; tinted by the
+           counter upgrade) ---------- */}
+      <div className={"absolute left-0 right-0 bottom-0 w-full " + pulse("counter")} style={{ height: "32%", zIndex: 5 }}>
+        <ImgOr src={ASSET.counter} className="w-full h-full" style={{ objectFit: "cover", objectPosition: "center 30%", filter: counter ? counter.filter : "none" }} fallback={<div style={{ height: "100%", background: "linear-gradient(" + (counter ? counter.color : I.counter) + "," + (counter ? counter.color : I.counter) + "cc)", borderTop: "5px solid #fff" }} />} />
       </div>
+
+      {/* ---------- CUSTOMER — serve mode only, big enough to feel real ---------- */}
+      {mode === "serve" && customer && (
+        <div className="absolute" style={{ right: "0%", bottom: "4%", width: "48%", zIndex: 6 }}>
+          <CustomerView customer={customer} state={freeze ? "freeze" : "wait"} />
+        </div>
+      )}
+
+      {/* ---------- edit-mode label ---------- */}
+      {mode === "edit" && <div className="absolute left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[9px] font-black text-white" style={{ top: 4, background: "rgba(160,107,255,.85)", zIndex: 8 }}>✏️ Renovating your shop</div>}
 
       {children}
     </div>
   );
 }
+
+/* The Serve tab renders the very same shop, with a customer at the counter. */
+function StorefrontScene(props) { return <ShopScene mode="serve" {...props} />; }
 
 /* ============================== MODES ==================================== */
 function FlavorButtons({ onPick, disabled }) {
   return (<div className="grid grid-cols-4 gap-2">{FLAVOR_LIST.map((f) => <button key={f.key} onClick={() => onPick(f.key)} disabled={disabled} aria-label={f.name} className="rounded-2xl p-2 bg-white shadow-md active:scale-90 transition flex items-center justify-center" style={{ border: "3px solid #f0f0f0" }}><Scoop flavorKey={f.key} size={46} /></button>)}</div>);
 }
 function Bubble({ children }) { return <div className="rounded-2xl px-4 py-3 mb-2 shadow-lg text-center bg-white" style={{ border: "3px solid #b3e5ff" }}>{children}</div>; }
-function PatternMode({ onSolve, onMiss, locked }) {
+function PatternMode({ onSolve, onMiss, locked, speak }) {
   const p = useMemo(() => { const a = rand(FLAVOR_KEYS); let b = rand(FLAVOR_KEYS); while (b === a) b = rand(FLAVOR_KEYS); const seq = rand([[a, b, a, b], [a, a, b, a], [a, b, b, a]]); return { seq, answer: seq[seq.length - 1], shown: seq.slice(0, -1) }; }, []);
+  useEffect(() => { speak && speak("What scoop comes next?"); }, []); // eslint-disable-line
   return (<><Bubble><p className="text-base font-bold mb-2" style={{ color: "#6b4bff" }}>What comes next? 🤔</p><div className="flex items-center justify-center gap-2 flex-wrap">{p.shown.map((s, i) => <Scoop key={i} flavorKey={s} size={42} />)}<div className="rounded-full flex items-center justify-center text-2xl font-black" style={{ width: 42, height: 42, border: "3px dashed #b0b0b0", color: "#b0b0b0" }}>?</div></div></Bubble><FlavorButtons disabled={locked} onPick={(k) => (k === p.answer ? onSolve() : onMiss())} /></>);
 }
-function CountingMode({ level, onSolve, onMiss, locked, sounds }) {
+function CountingMode({ level, onSolve, onMiss, locked, sounds, speak }) {
   const p = useMemo(() => ({ flavor: rand(FLAVOR_KEYS), target: randInt(2, clamp(3 + Math.floor(level / 8), 3, 6)) }), [level]);
   const [stack, setStack] = useState([]); const f = FLAVORS[p.flavor];
+  useEffect(() => { speak && speak("I want " + p.target + " " + f.name + " scoops!"); }, []); // eslint-disable-line
   const tap = (k) => { if (locked) return; if (k !== p.flavor) { onMiss(); return; } const n = [...stack, k]; setStack(n); sounds && sounds.plop(); if (n.length >= p.target) onSolve(); };
   return (<><Bubble><p className="text-base font-bold mb-1" style={{ color: "#6b4bff" }}>I want <span style={{ color: f.color }}>{p.target} {f.name}</span> scoops!</p><div className="flex items-center justify-center gap-3"><Cone scoops={stack} size={30} /><div key={stack.length} className="counter-pop text-5xl font-black" style={{ color: f.color }}>{stack.length}<span className="text-2xl text-gray-400"> / {p.target}</span></div></div></Bubble><FlavorButtons disabled={locked} onPick={tap} /></>);
 }
-function AdditionMode({ level, onSolve, onMiss, locked }) {
-  const p = useMemo(() => { const a = randInt(1, 3), b = randInt(1, 3), sum = a + b; const o = new Set([sum]); while (o.size < 3) o.add(clamp(sum + randInt(-2, 2), 1, 9)); return { a, b, sum, options: [...o].sort(() => Math.random() - 0.5) }; }, [level]);
+function AdditionMode({ level, onSolve, onMiss, locked, speak }) {
+  const p = useMemo(() => { const mx = clamp(2 + Math.floor(level / 7), 2, 5); const a = randInt(1, mx), b = randInt(1, mx), sum = a + b; const o = new Set([sum]); while (o.size < 3) o.add(clamp(sum + randInt(-2, 2), 1, 12)); return { a, b, sum, options: [...o].sort(() => Math.random() - 0.5) }; }, [level]);
+  useEffect(() => { speak && speak(p.a + " plus " + p.b + ". How many scoops in total?"); }, []); // eslint-disable-line
   const Dots = ({ n, c }) => <span className="inline-flex gap-1 align-middle">{Array.from({ length: n }).map((_, i) => <span key={i} className="inline-block rounded-full" style={{ width: 15, height: 15, background: c }} />)}</span>;
   return (<><Bubble><p className="text-base font-bold mb-2" style={{ color: "#6b4bff" }}>How many scoops? 🍨</p><div className="flex items-center justify-center gap-2 text-3xl font-black" style={{ color: "#3aa0ff" }}><Dots n={p.a} c="#ff5c93" /> <span>+</span> <Dots n={p.b} c="#4dd0e1" /> <span>=</span> <span className="text-gray-400">?</span></div></Bubble><div className="grid grid-cols-3 gap-3">{p.options.map((n) => <button key={n} disabled={locked} onClick={() => (n === p.sum ? onSolve() : onMiss())} className="rounded-2xl py-6 shadow-md active:scale-90 transition text-4xl font-black text-white" style={{ background: "linear-gradient(#7ed9ff,#3aa0ff)" }}>{n}</button>)}</div></>);
 }
-function MemoryMode({ level, onSolve, onMiss, locked }) {
+function MemoryMode({ level, onSolve, onMiss, locked, speak }) {
   const order = useMemo(() => Array.from({ length: clamp(2 + Math.floor(level / 6), 2, 5) }, () => rand(FLAVOR_KEYS)), [level]);
   const [phase, setPhase] = useState("show"); const [count, setCount] = useState(3); const [input, setInput] = useState([]);
+  useEffect(() => { speak && speak("Remember the order!"); }, []); // eslint-disable-line
   useEffect(() => { if (phase !== "show") return; if (count <= 0) { setPhase("input"); return; } const id = setTimeout(() => setCount((c) => c - 1), 1000); return () => clearTimeout(id); }, [phase, count]);
   const tap = (k) => { if (locked || phase !== "input") return; if (k !== order[input.length]) { setInput([]); onMiss(); return; } const n = [...input, k]; setInput(n); if (n.length === order.length) onSolve(); };
   return (<><Bubble>{phase === "show" ? (<><p className="text-base font-bold mb-2" style={{ color: "#6b4bff" }}>Remember the order! 🧠 <span className="text-red-500">{count}</span></p><div className="flex items-center justify-center gap-2">{order.map((s, i) => <Scoop key={i} flavorKey={s} size={40} />)}</div></>) : (<><p className="text-base font-bold mb-2" style={{ color: "#6b4bff" }}>Make the same order! ✨</p><div className="flex items-center justify-center gap-2">{order.map((_, i) => <div key={i} className="rounded-full flex items-center justify-center" style={{ width: 40, height: 40, border: "3px dashed #ccc" }}>{input[i] && <Scoop flavorKey={input[i]} size={36} />}</div>)}</div></>)}</Bubble><FlavorButtons disabled={locked || phase === "show"} onPick={tap} /></>);
 }
-function SortingMode({ level, onSolve, onMiss, locked, sounds }) {
-  const target = useMemo(() => rand(FLAVOR_KEYS), [level]); const need = 4;
+function SortingMode({ level, onSolve, onMiss, locked, sounds, speak }) {
+  const target = useMemo(() => rand(FLAVOR_KEYS), [level]); const need = clamp(3 + Math.floor(level / 8), 3, 6);
   const [items, setItems] = useState([]); const [got, setGot] = useState(0); const idRef = useRef(0); const done = useRef(false);
+  useEffect(() => { speak && speak("Catch " + need + " " + FLAVORS[target].name + " scoops!"); }, []); // eslint-disable-line
   useEffect(() => { if (locked) return; const sp = setInterval(() => { const color = Math.random() < 0.55 ? target : rand(FLAVOR_KEYS); const id = ++idRef.current; setItems((a) => [...a, { id, color, left: 8 + Math.random() * 78, dur: 2.6 + Math.random() * 1.4 }]); setTimeout(() => setItems((a) => a.filter((x) => x.id !== id)), 4200); }, 650); return () => clearInterval(sp); }, [locked, target]);
   const grab = (x) => { if (locked || done.current) return; setItems((a) => a.filter((y) => y.id !== x.id)); if (x.color === target) { const g = got + 1; setGot(g); sounds && sounds.sparkle(); if (g >= need) { done.current = true; onSolve(); } } else onMiss(); };
   const f = FLAVORS[target];
   return (<><Bubble><p className="text-base font-bold" style={{ color: "#6b4bff" }}>Catch <span style={{ color: f.color }}>{need} {f.name}</span> scoops! 🌧️</p><p className="text-sm text-gray-500">Tap only the right colour — {got}/{need}</p></Bubble><div className="relative rounded-2xl overflow-hidden mb-1" style={{ height: 200, background: "linear-gradient(#eef9ff,#dff1ff)", border: "3px solid #b3e5ff" }}>{items.map((x) => <button key={x.id} onClick={() => grab(x)} className="absolute falling active:scale-90" style={{ left: x.left + "%", top: -50, animationDuration: x.dur + "s" }}><Scoop flavorKey={x.color} size={46} /></button>)}</div></>);
 }
-function SpeedMode({ onSolve, onMiss, locked, sounds }) {
-  const DUR = 18; const [t, setT] = useState(DUR); const [order, setOrder] = useState(() => rand(FLAVOR_KEYS)); const [served, setServed] = useState(0); const done = useRef(false);
+function SpeedMode({ level = 1, onSolve, onMiss, locked, sounds, speak }) {
+  const DUR = clamp(20 - Math.floor(level / 4), 12, 20); const [t, setT] = useState(DUR); const [order, setOrder] = useState(() => rand(FLAVOR_KEYS)); const [served, setServed] = useState(0); const done = useRef(false);
+  useEffect(() => { speak && speak("Speed round! Tap fast!"); }, []); // eslint-disable-line
   useEffect(() => { if (locked) return; const id = setInterval(() => { setT((x) => { if (x <= 1) { clearInterval(id); if (!done.current) { done.current = true; onSolve({ bonusCoins: served * 3 }); } return 0; } if (x <= 5) sounds.tick(); return x - 1; }); }, 1000); return () => clearInterval(id); }, [locked]); // eslint-disable-line
   const f = FLAVORS[order];
   const tap = (k) => { if (locked || done.current) return; if (k === order) { setServed((s) => s + 1); sounds.coin(); setOrder(rand(FLAVOR_KEYS)); } else onMiss(); };
   return (<><Bubble><p className="text-base font-bold" style={{ color: "#6b4bff" }}>⚡ SPEED ROUND! Tap <span style={{ color: f.color }}>{f.name}</span>!</p><div className="mt-2 h-3 rounded-full bg-gray-200 overflow-hidden"><div style={{ width: (t / DUR) * 100 + "%", height: "100%", background: t <= 5 ? "#ff5c5c" : "#7ed957", transition: "width 1s linear" }} /></div><p className="text-sm font-black mt-1" style={{ color: "#ff7e1d" }}>Served: {served} 🍦</p></Bubble><FlavorButtons disabled={locked} onPick={tap} /></>);
 }
-function MegaMode({ level, onSolve, locked, sounds }) {
+function MegaMode({ level, onSolve, locked, sounds, speak }) {
   const target = useMemo(() => (level < 14 ? 10 : level < 26 ? 15 : 20), [level]); const [tower, setTower] = useState([]);
+  useEffect(() => { speak && speak("Build a " + target + " scoop tower!"); }, []); // eslint-disable-line
   const add = () => { if (locked) return; const n = [...tower, rand(FLAVOR_KEYS)]; setTower(n); sounds && sounds.plop(); if (n.length >= target) onSolve({ bonusCoins: target }); };
   return (<><Bubble><p className="text-base font-bold" style={{ color: "#6b4bff" }}>🗼 MEGA ORDER! Build a <span className="text-pink-500">{target}-scoop</span> tower!</p><p className="text-sm text-gray-500">{tower.length} / {target}</p></Bubble><div className="relative rounded-2xl overflow-y-auto mb-2 flex items-end justify-center" style={{ height: 170, background: "linear-gradient(#fff,#fff5fa)", border: "3px solid #ffd1e3" }}><div className="scale-90"><Cone scoops={tower} size={26} max={30} /></div></div><button onClick={add} disabled={locked} className="w-full rounded-2xl py-5 text-2xl font-black text-white shadow-md active:scale-95 transition" style={{ background: "linear-gradient(#ff9f43,#ff7e1d)" }}>+ Add Scoop 🍦</button></>);
 }
@@ -727,9 +740,9 @@ const MODE_COMPONENTS = { pattern: PatternMode, counting: CountingMode, addition
 /* ============================== OVERLAYS ================================= */
 function Overlay({ children }) { return (<div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(40,20,60,0.45)" }}><div className="overlay-pop w-full max-w-sm text-center rounded-[2rem] p-6 shadow-2xl bg-white" style={{ border: "4px solid #ffd1e3" }}>{children}</div></div>); }
 function MysteryBox({ reward, onContinue, sounds }) { const [o, setO] = useState(false); return (<Overlay><h2 className="text-3xl font-black mb-2" style={{ color: "#a06bff" }}>🎁 Mystery Box!</h2>{!o ? (<><button onClick={() => { setO(true); sounds.mystery(); }} className="text-[90px] leading-none my-3 wiggle active:scale-90">🎁</button><p className="text-lg font-bold text-gray-500 mb-3">Tap to open!</p></>) : (<><div className="text-[80px] leading-none my-2 reward-pop">{reward.emoji}</div><p className="text-xl font-black mb-1" style={{ color: "#ff5c93" }}>{reward.label}</p><Confetti show /><button onClick={onContinue} className="pulse-btn mt-3 text-white text-xl font-black px-8 py-3 rounded-full shadow-xl" style={{ background: "linear-gradient(#7ed957,#4caf2f)" }}>Yay! ✨</button></>)}</Overlay>); }
-function Milestone({ kind, tierIdx, world, onContinue }) { return (<Overlay><Confetti show big />{kind === "world" ? (<><p className="text-lg font-bold" style={{ color: world.accent }}>NEW WORLD UNLOCKED!</p><div className="text-[80px] leading-none my-2 reward-pop">{world.out}</div><h2 className="text-3xl font-black mb-2" style={{ color: world.accent }}>{world.name}</h2></>) : (<><p className="text-lg font-bold" style={{ color: "#ff7e1d" }}>SHOP UPGRADE!</p><div className="text-[80px] leading-none my-2 reward-pop">{SHOP_TIERS[tierIdx].emoji}</div><h2 className="text-3xl font-black mb-2" style={{ color: "#ff5c93" }}>{SHOP_TIERS[tierIdx].name}</h2></>)}<div className="my-2 flex justify-center"><IshanaFace size={86} mood="dance" /></div><button onClick={onContinue} className="pulse-btn mt-2 text-white text-xl font-black px-8 py-3 rounded-full shadow-xl" style={{ background: "linear-gradient(#ff7eb3,#ff5c93)" }}>Hooray! 🎉</button></Overlay>); }
-function RareArrival({ customer, onContinue }) { return (<Overlay><Confetti show /><p className="text-lg font-bold" style={{ color: "#a06bff" }}>✨ NEW FRIEND! ✨</p><div className="my-2 reward-pop flex justify-center"><ChibiAnimal type={customer} state="wait" size={104} /></div><h2 className="text-2xl font-black mb-1" style={{ color: "#ff5c93" }}>{CUSTOMER_INFO[customer].name}</h2><p className="text-sm text-gray-500 mb-3">New sticker for your album! 📖</p><button onClick={onContinue} className="pulse-btn text-white text-xl font-black px-8 py-3 rounded-full shadow-xl" style={{ background: "linear-gradient(#a06bff,#7b3ff2)" }}>Cool! 🌟</button></Overlay>); }
-function DailyReward({ day, onClaim }) { return (<Overlay><h2 className="text-2xl font-black mb-1" style={{ color: "#ff7e1d" }}>🎁 Daily Reward!</h2><p className="text-sm font-bold text-gray-500 mb-3">Day {day + 1} — come back every day!</p><div className="grid grid-cols-4 gap-2 mb-4">{DAILY_REWARDS.map((r, i) => (<div key={i} className="rounded-2xl p-2 flex flex-col items-center justify-center" style={{ background: i < day ? "#e9ffe9" : i === day ? "#fff3d6" : "#f3f3f3", border: "3px solid " + (i === day ? "#ffb300" : i < day ? "#7ed957" : "#eee"), aspectRatio: "1" }}><div className="text-2xl">{i < day ? "✅" : r.emoji}</div><div className="text-[8px] font-bold mt-0.5 leading-tight">{r.label}</div></div>))}</div><button onClick={onClaim} className="pulse-btn text-white text-xl font-black px-8 py-3 rounded-full shadow-xl" style={{ background: "linear-gradient(#ff9f43,#ff7e1d)" }}>Claim {DAILY_REWARDS[day].emoji}</button></Overlay>); }
+function Milestone({ kind, tierIdx, world, onContinue }) { return (<Overlay><Confetti show big />{kind === "world" ? (<><p className="text-lg font-bold" style={{ color: world.accent }}>NEW WORLD UNLOCKED!</p><div className="text-[80px] leading-none my-2 reward-pop">{world.out}</div><h2 className="text-3xl font-black mb-2" style={{ color: world.accent }}>{world.name}</h2></>) : (<><p className="text-lg font-bold" style={{ color: "#ff7e1d" }}>SHOP UPGRADE!</p><div className="text-[80px] leading-none my-2 reward-pop">{SHOP_TIERS[tierIdx].emoji}</div><h2 className="text-3xl font-black mb-2" style={{ color: "#ff5c93" }}>{SHOP_TIERS[tierIdx].name}</h2></>)}<div className="my-2 flex justify-center"><ImgOr src={ASSET.hero} className="object-contain ishana-cheer" style={{ height: 110 }} fallback={<IshanaFace size={86} mood="dance" />} /></div><button onClick={onContinue} className="pulse-btn mt-2 text-white text-xl font-black px-8 py-3 rounded-full shadow-xl" style={{ background: "linear-gradient(#ff7eb3,#ff5c93)" }}>Hooray! 🎉</button></Overlay>); }
+function RareArrival({ customer, onContinue }) { return (<Overlay><Confetti show /><p className="text-lg font-bold" style={{ color: "#a06bff" }}>✨ NEW FRIEND! ✨</p><div className="my-2 reward-pop flex justify-center"><ImgOr src={"assets/animal-" + customer + ".png"} className="object-contain" style={{ width: 110, height: 110 }} fallback={<ChibiAnimal type={customer} state="wait" size={104} />} /></div><h2 className="text-2xl font-black mb-1" style={{ color: "#ff5c93" }}>{CUSTOMER_INFO[customer].name}</h2><p className="text-sm text-gray-500 mb-3">New sticker for your album! 📖</p><button onClick={onContinue} className="pulse-btn text-white text-xl font-black px-8 py-3 rounded-full shadow-xl" style={{ background: "linear-gradient(#a06bff,#7b3ff2)" }}>Cool! 🌟</button></Overlay>); }
+function DailyReward({ day, claimed, onClaim, onClose }) { return (<Overlay><h2 className="text-2xl font-black mb-1" style={{ color: "#ff7e1d" }}>🎁 Daily Reward!</h2><p className="text-sm font-bold text-gray-500 mb-3">Day {day + 1} — come back every day!</p><div className="grid grid-cols-4 gap-2 mb-4">{DAILY_REWARDS.map((r, i) => (<div key={i} className="rounded-2xl p-2 flex flex-col items-center justify-center" style={{ background: i < day ? "#e9ffe9" : i === day ? "#fff3d6" : "#f3f3f3", border: "3px solid " + (i === day ? "#ffb300" : i < day ? "#7ed957" : "#eee"), aspectRatio: "1" }}><div className="text-2xl">{i < day ? "✅" : r.emoji}</div><div className="text-[8px] font-bold mt-0.5 leading-tight">{r.label}</div></div>))}</div>{claimed ? (<><p className="text-base font-black mb-3" style={{ color: "#7ed957" }}>✅ Claimed! Come back tomorrow ⏰</p><button onClick={onClose} className="pulse-btn text-white text-xl font-black px-8 py-3 rounded-full shadow-xl" style={{ background: "linear-gradient(#9aa3ad,#7d8794)" }}>OK 👍</button></>) : (<button onClick={onClaim} className="pulse-btn text-white text-xl font-black px-8 py-3 rounded-full shadow-xl" style={{ background: "linear-gradient(#ff9f43,#ff7e1d)" }}>Claim {DAILY_REWARDS[day].emoji}</button>)}</Overlay>); }
 
 /* Visual preview for any catalog item — real swatches for slot upgrades so
  * signs/roofs/counters/floors/walls no longer show a placeholder icon. */
@@ -750,8 +763,8 @@ function ItemGrid({ items, save, onUse, isEquipped, labelFor, noDisable }) {
     return (<button key={i.id} onClick={() => onUse(i)} disabled={!noDisable && !owned && !afford} className="relative rounded-2xl p-2 shadow-md transition active:scale-95 text-center flex flex-col items-center" style={{ background: equipped ? "#fff0d6" : owned ? "#f3fff3" : afford ? "#fff" : "#f3f3f3", border: "3px solid " + (equipped ? "#ffb300" : owned ? "#7ed957" : "#eee"), opacity: owned || afford ? 1 : 0.6 }}>
       <div className="absolute top-1 left-1"><RarityBadge rarity={i.rarity} /></div>
       <div className="mt-3 flex items-center justify-center" style={{ minHeight: 30 }}><ItemIcon item={i} size={26} /></div>
-      <div className="text-[10px] font-bold mt-1 leading-tight">{i.name}</div>
-      <div className="text-[10px] font-black mt-0.5" style={{ color: equipped ? "#ff7e1d" : owned ? "#4caf2f" : "#ff7e1d" }}>{labelFor ? labelFor(i, owned, equipped) : (equipped ? "Using ✓" : owned ? "Use it" : "🪙 " + money(i.cost))}</div>
+      <div className="text-[11px] font-bold mt-1 leading-tight">{i.name}</div>
+      <div className="text-[11px] font-black mt-0.5" style={{ color: equipped ? "#ff7e1d" : owned ? "#4caf2f" : "#ff7e1d" }}>{labelFor ? labelFor(i, owned, equipped) : (equipped ? "Using ✓" : owned ? "Use it" : "🪙 " + money(i.cost))}</div>
     </button>);
   })}</div>);
 }
@@ -760,7 +773,8 @@ function ItemGrid({ items, save, onUse, isEquipped, labelFor, noDisable }) {
 function DressUpPage({ save, onUse }) {
   const [cat, setCat] = useState("dress");
   const [tryOn, setTryOn] = useState(null); // unowned item being previewed before buying
-  const cats = [["dress", "👗"], ["shoes", "👟"], ["acc", "🎀"], ["hat", "👒"], ["pet", "🐾"]];
+  const cats = [["dress", "👗"], ["pet", "🐾"]];
+  const dressItems = byCat("dress").filter((d) => OUTFITS[d.id]); // only painted outfits
   const isEq = (i) => (tryOn ? tryOn.id === i.id : (i.cat === "pet" ? save.pet === i.id : save.equipped[i.cat] === i.id));
   // Avatar reflects the Try-On preview when active.
   const previewEquipped = tryOn && tryOn.cat !== "pet" ? { ...save.equipped, [tryOn.cat]: tryOn.id } : save.equipped;
@@ -771,7 +785,7 @@ function DressUpPage({ save, onUse }) {
   };
   const buy = () => { if (tryOn) { onUse(tryOn); setTryOn(null); } };  // confirm purchase
   return (<div>
-    <div className="flex justify-center mb-2"><FullIshana equipped={previewEquipped} pet={previewPet} size={138} mood="idle" /></div>
+    <div className="flex justify-center mb-2"><IshanaAvatar equipped={previewEquipped} pet={previewPet} size={120} mood="idle" /></div>
     {tryOn && (
       <div className="flex items-center justify-center gap-2 mb-2 banner-pop">
         <span className="text-sm font-black" style={{ color: "#a06bff" }}>Try-On: {tryOn.name}</span>
@@ -780,7 +794,12 @@ function DressUpPage({ save, onUse }) {
       </div>
     )}
     <div className="flex justify-center gap-2 mb-2">{cats.map(([c, e]) => <button key={c} onClick={() => { setCat(c); setTryOn(null); }} className="w-11 h-11 rounded-2xl text-xl shadow active:scale-90" style={{ background: cat === c ? "#ff7eb3" : "#fff", border: "3px solid " + (cat === c ? "#ff5c93" : "#eee") }}>{e}</button>)}</div>
-    <div className="rounded-2xl p-2 bg-white/70" style={{ border: "3px solid #ffd1e3" }}><div className="max-h-[30vh] overflow-y-auto pr-1"><ItemGrid items={byCat(cat)} save={save} onUse={tap} isEquipped={isEq} labelFor={(i, o, e) => (o ? (e ? (cat === "pet" ? "Chosen ✓" : "Wearing ✓") : (cat === "pet" ? "Pick pet" : "Tap to wear")) : (save.coins >= i.cost ? (tryOn && tryOn.id === i.id ? "Trying… 👀" : "Try on 👀") : "🔒 🪙 " + money(i.cost)))} /></div></div>
+    <div className="rounded-2xl p-2 bg-white/70" style={{ border: "3px solid #ffd1e3" }}><div className="max-h-[30vh] overflow-y-auto pr-1">
+      {cat === "dress" && (
+        <button onClick={() => { if (save.equipped.dress) onUse(ITEM[save.equipped.dress]); setTryOn(null); }} className="w-full mb-2 rounded-2xl py-2 shadow-md active:scale-95 flex items-center justify-center gap-2 font-black text-sm" style={{ background: !save.equipped.dress ? "#fff0d6" : "#fff", border: "3px solid " + (!save.equipped.dress ? "#ffb300" : "#eee"), color: "#ff7e1d" }}>🍦 Default Apron {!save.equipped.dress ? "✓" : ""}</button>
+      )}
+      <ItemGrid items={cat === "dress" ? dressItems : byCat("pet")} save={save} onUse={tap} isEquipped={isEq} labelFor={(i, o, e) => (o ? (e ? (cat === "pet" ? "Chosen ✓" : "Wearing ✓") : (cat === "pet" ? "Pick pet" : "Tap to wear")) : (save.coins >= i.cost ? (tryOn && tryOn.id === i.id ? "Trying… 👀" : "Try on 👀") : "🔒 🪙 " + money(i.cost)))} />
+    </div></div>
   </div>);
 }
 
@@ -796,34 +815,51 @@ const CAT_LABEL = { sign: "Signboard", roof: "Roof / Awning", entrance: "Entranc
 
 function DecoratePage({ save, setSave, sounds, world, tierIdx }) {
   const [sub, setSub] = useState("outside");
+  const [focus, setFocus] = useState(null); // unowned item being previewed live before buying
   const sceneRef = useRef(null); const drag = useRef(null); const [boom, setBoom] = useState(false);
   const placedIds = save.placed.map((p) => p.id);
 
-  const celebrate = (rarity) => { if (rarity === "epic" || rarity === "legendary") { sounds.rare(); setBoom(true); setTimeout(() => setBoom(false), 1400); } else sounds.upgrade(); };
+  const celebrate = (rarity) => { if (["rare", "epic", "legendary", "dream"].includes(rarity)) { sounds.rare(); sounds.sparkle(); setBoom(rarity); setTimeout(() => setBoom(false), 1700); } else sounds.upgrade(); };
   const place = (id) => { setSave((s) => (s.placed.find((p) => p.id === id) ? s : { ...s, placed: [...s.placed, { id, x: 30 + Math.random() * 40, y: 46 + Math.random() * 22 }] })); sounds.pop(); };
   const onItemDown = (e, id) => { const r = sceneRef.current.getBoundingClientRect(); drag.current = { id, r }; if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); };
   const onMove = (e) => { if (!drag.current) return; const { id, r } = drag.current; const x = clamp(((e.clientX - r.left) / r.width) * 100, 4, 96), y = clamp(((e.clientY - r.top) / r.height) * 100, 8, 84); setSave((s) => ({ ...s, placed: s.placed.map((p) => (p.id === id ? { ...p, x, y } : p)) })); };
   const onUp = (maybeId, rm) => { if (rm && typeof maybeId === "string") setSave((s) => ({ ...s, placed: s.placed.filter((p) => p.id !== maybeId) })); drag.current = null; };
 
+  // Tap: owned item acts at once; unowned+affordable previews live (then Buy commits).
   const onUse = (i) => {
     const owned = save.owned.includes(i.id);
-    if (isSlot(i.cat)) {
-      if (!owned) { if (save.coins < i.cost) return; celebrate(i.rarity); setSave((s) => ({ ...s, coins: s.coins - i.cost, owned: [...s.owned, i.id], shop: { ...s.shop, [i.cat]: i.id } })); }
-      else { sounds.pop(); setSave((s) => ({ ...s, shop: { ...s.shop, [i.cat]: s.shop[i.cat] === i.id ? null : i.id } })); }
-      return;
-    }
-    // decor
-    if (!owned) { if (save.coins < i.cost) return; celebrate(i.rarity); setSave((s) => ({ ...s, coins: s.coins - i.cost, owned: [...s.owned, i.id], placed: [...s.placed, { id: i.id, x: 30 + Math.random() * 40, y: 46 + Math.random() * 22 }] })); }
+    if (!owned) { if (save.coins < i.cost) return; sounds.pop(); setFocus((f) => (f && f.id === i.id ? null : i)); return; }
+    setFocus(null);
+    if (isSlot(i.cat)) { sounds.pop(); setSave((s) => ({ ...s, shop: { ...s.shop, [i.cat]: s.shop[i.cat] === i.id ? null : i.id } })); }
     else if (!placedIds.includes(i.id)) place(i.id);
+  };
+  // Buy the previewed item — and immediately wear/place it so the shop updates.
+  const buyFocused = () => {
+    const i = focus; if (!i || save.coins < i.cost) return;
+    celebrate(i.rarity);
+    setSave((s) => {
+      const ns = { ...s, coins: s.coins - i.cost, owned: [...s.owned, i.id] };
+      if (isSlot(i.cat)) ns.shop = { ...s.shop, [i.cat]: i.id };
+      else ns.placed = [...s.placed, { id: i.id, x: 30 + Math.random() * 40, y: 46 + Math.random() * 22 }];
+      return ns;
+    });
+    setFocus(null);
   };
 
   const active = SUBTABS.find((s) => s.key === sub);
   return (<div>
-    {boom && <Confetti show />}
+    {boom && <Confetti show big={boom === "legendary" || boom === "dream"} />}
     <div className="text-center mb-1 text-sm font-black" style={{ color: "#a06bff" }}>{SHOP_TIERS[tierIdx].emoji} {SHOP_TIERS[tierIdx].name} — make it the coolest shop!</div>
-    <div className="mb-2"><ShopScene tierIdx={tierIdx} world={world} shop={save.shop} placed={save.placed} editable height={290} sceneRef={sceneRef} onItemDown={onItemDown} onMove={onMove} onUp={onUp}><div className="absolute" style={{ left: "28%", bottom: "16%", zIndex: 6 }}><FullIshana equipped={save.equipped} pet={save.pet} size={86} mood="idle" /></div></ShopScene></div>
+    <div className="mb-2"><ShopScene mode="edit" tierIdx={tierIdx} world={world} shop={save.shop} placed={save.placed} equipped={save.equipped} pet={save.pet} preview={focus} editable height={360} sceneRef={sceneRef} onItemDown={onItemDown} onMove={onMove} onUp={onUp} /></div>
+    {focus && (
+      <div className="flex items-center justify-center gap-2 mb-2 banner-pop">
+        <span className="text-sm font-black truncate" style={{ color: "#a06bff" }}>Preview: {focus.name}</span>
+        <button onClick={buyFocused} disabled={save.coins < focus.cost} className="text-sm font-black text-white px-4 py-1.5 rounded-full shadow active:scale-95" style={{ background: save.coins >= focus.cost ? "linear-gradient(#7ed957,#4caf2f)" : "#bbb" }}>Buy 🪙 {money(focus.cost)}</button>
+        <button onClick={() => setFocus(null)} className="text-xs font-bold text-gray-400 underline">cancel</button>
+      </div>
+    )}
 
-    <div className="flex gap-1.5 overflow-x-auto pb-1 mb-2">{SUBTABS.map((s) => <button key={s.key} onClick={() => setSub(s.key)} className="flex-shrink-0 flex flex-col items-center rounded-2xl px-3 py-1 active:scale-90" style={{ background: sub === s.key ? "linear-gradient(#ff7eb3,#ff5c93)" : "#fff", border: "3px solid " + (sub === s.key ? "#ff5c93" : "#eee") }}><span className="text-lg">{s.emoji}</span><span className="text-[9px] font-black" style={{ color: sub === s.key ? "#fff" : "#b08" }}>{s.label}</span></button>)}</div>
+    <div className="flex gap-1.5 overflow-x-auto pb-1 mb-2">{SUBTABS.map((s) => <button key={s.key} onClick={() => { setSub(s.key); setFocus(null); }} className="flex-shrink-0 flex flex-col items-center rounded-2xl px-3 py-1 active:scale-90" style={{ background: sub === s.key ? "linear-gradient(#ff7eb3,#ff5c93)" : "#fff", border: "3px solid " + (sub === s.key ? "#ff5c93" : "#eee") }}><span className="text-lg">{s.emoji}</span><span className="text-[10px] font-black" style={{ color: sub === s.key ? "#fff" : "#b08" }}>{s.label}</span></button>)}</div>
 
     <div className="rounded-2xl p-2 bg-white/70" style={{ border: "3px solid #ffd1e3" }}>
       <div className="max-h-[34vh] overflow-y-auto pr-1">
@@ -838,7 +874,7 @@ function DecoratePage({ save, setSave, sounds, world, tierIdx }) {
           active.cats.map((c) => (
             <div key={c} className="mb-2">
               <div className="text-xs font-black mb-1 px-1" style={{ color: "#ff5c93" }}>{CAT_LABEL[c] || "Decorations"}</div>
-              <ItemGrid items={byCat(c)} save={save} onUse={onUse} isEquipped={(i) => (isSlot(i.cat) ? save.shop[i.cat] === i.id : placedIds.includes(i.id))} labelFor={(i, o, e) => (isSlot(i.cat) ? (e ? "Using ✓" : o ? "Use it" : "🪙 " + money(i.cost)) : (placedIds.includes(i.id) ? "In shop ✓" : o ? "Place it" : "🪙 " + money(i.cost)))} />
+              <ItemGrid items={byCat(c)} save={save} onUse={onUse} isEquipped={(i) => (focus ? focus.id === i.id : (isSlot(i.cat) ? save.shop[i.cat] === i.id : placedIds.includes(i.id)))} labelFor={(i, o, e) => { if (focus && focus.id === i.id) return "Preview 👀"; if (isSlot(i.cat)) return o ? (save.shop[i.cat] === i.id ? "Using ✓" : "Use it") : (save.coins >= i.cost ? "Try it 👀" : "🔒 🪙 " + money(i.cost)); return placedIds.includes(i.id) ? "In shop ✓" : o ? "Place it" : (save.coins >= i.cost ? "Try it 👀" : "🔒 🪙 " + money(i.cost)); }} />
             </div>
           ))
         )}
@@ -867,9 +903,77 @@ function CollectionPage({ save }) {
         <div className="grid grid-cols-6 gap-1.5">{g.items.map((i) => box(save.owned.includes(i.id), RARITY[i.rarity].color, save.owned.includes(i.id) ? <ItemIcon item={i} size={16} /> : "❓"))}</div>
       </div>
     ); })}
-    <div className="mb-3 rounded-2xl p-3 bg-white shadow" style={{ border: "3px solid #ffe3ef" }}><div className="flex items-center justify-between mb-1"><span className="font-black" style={{ color: "#ff5c93" }}>🧁 Customers</span><span className="text-sm font-bold text-gray-500">{custList.filter((c) => save.met.includes(c)).length} / {custList.length}</span></div><div className="grid grid-cols-6 gap-1.5">{custList.map((c) => box(save.met.includes(c), "#ffb6d9", save.met.includes(c) ? CUSTOMER_INFO[c].emoji : "❓"))}</div></div>
+    <div className="mb-3 rounded-2xl p-3 bg-white shadow" style={{ border: "3px solid #ffe3ef" }}><div className="flex items-center justify-between mb-1"><span className="font-black" style={{ color: "#ff5c93" }}>🧁 Customers</span><span className="text-sm font-bold text-gray-500">{custList.filter((c) => save.met.includes(c)).length} / {custList.length}</span></div><div className="grid grid-cols-6 gap-1.5">{custList.map((c) => box(save.met.includes(c), "#ffb6d9", save.met.includes(c) ? <ImgOr src={"assets/animal-" + c + ".png"} className="object-contain" style={{ width: "94%", height: "94%" }} fallback={<span>{CUSTOMER_INFO[c].emoji}</span>} /> : "❓"))}</div></div>
     <div className="mb-2 rounded-2xl p-3 bg-white shadow" style={{ border: "3px solid #ffe3ef" }}><div className="flex items-center justify-between mb-1"><span className="font-black" style={{ color: "#ff5c93" }}>🌍 Worlds</span><span className="text-sm font-bold text-gray-500">{worldCount} / {WORLDS.length}</span></div><div className="grid grid-cols-5 gap-1.5">{WORLDS.map((w, i) => box(i < worldCount, "#a06bff", i < worldCount ? w.out : "🔒"))}</div></div>
   </div>);
+}
+
+/* Progress bar toward the next shop tier — gives a visible reason to keep playing. */
+function ShopProgress({ level }) {
+  const idx = tierIndexForLevel(level), cur = SHOP_TIERS[idx], next = SHOP_TIERS[idx + 1];
+  if (!next) return <div className="mt-1.5 text-center text-[11px] font-black" style={{ color: "#a06bff" }}>{cur.emoji} {cur.name} — MAX shop! 🏆</div>;
+  const span = next.min - cur.min, done = clamp(level - cur.min, 0, span), pct = Math.round((done / span) * 100), togo = next.min - level;
+  return (<div className="mt-1.5 flex items-center gap-2 px-1">
+    <span className="text-base leading-none">{cur.emoji}</span>
+    <div className="flex-1 h-2.5 rounded-full bg-white/70 overflow-hidden" style={{ boxShadow: "inset 0 1px 2px rgba(0,0,0,.12)" }}><div style={{ width: pct + "%", height: "100%", background: "linear-gradient(90deg,#ffd93d,#ff7e1d)" }} /></div>
+    <span className="text-base leading-none">{next.emoji}</span>
+    <span className="text-[10px] font-black text-gray-500 whitespace-nowrap">{togo} 🍦 to go</span>
+  </div>);
+}
+
+/* First-run coach card — short, friendly, spoken aloud for pre-readers. */
+function IntroCoach({ onClose, speak }) {
+  useEffect(() => { speak && speak("Welcome to Ishana's ice cream shop! Tap the answers to serve your customers, and earn coins to build the coolest shop!"); }, []); // eslint-disable-line
+  return (<Overlay>
+    <div className="text-[64px] leading-none my-1 bob">🍦</div>
+    <h2 className="text-2xl font-black mb-1" style={{ color: "#ff5c93" }}>Hi, I'm Ishana!</h2>
+    <div className="text-left text-sm font-bold text-gray-600 space-y-2 my-3">
+      <div className="flex items-center gap-2"><span className="text-2xl">👆</span> Tap the answer to serve a customer.</div>
+      <div className="flex items-center gap-2"><span className="text-2xl">🪙</span> Each happy customer gives you coins.</div>
+      <div className="flex items-center gap-2"><span className="text-2xl">🏪</span> Spend coins to build the coolest shop!</div>
+    </div>
+    <button onClick={onClose} className="pulse-btn text-white text-xl font-black px-10 py-3 rounded-full shadow-xl active:scale-95" style={{ background: "linear-gradient(#ff7eb3,#ff5c93)" }}>Let's go! 🎉</button>
+  </Overlay>);
+}
+
+/* Parental gate — a multiplication only a grown-up can solve quickly. Guards
+   Settings and shop reset (App Store / Play Kids-category requirement). */
+function ParentalGate({ onPass, onClose }) {
+  const q = useMemo(() => { const a = randInt(3, 9), b = randInt(3, 9), ans = a * b; const o = new Set([ans]); while (o.size < 3) o.add(clamp(ans + randInt(-12, 12) || ans + 5, 6, 99)); return { a, b, ans, opts: [...o].sort(() => Math.random() - 0.5) }; }, []);
+  const [wrong, setWrong] = useState(false);
+  return (<Overlay>
+    <h2 className="text-xl font-black mb-1" style={{ color: "#a06bff" }}>🔒 Grown-ups only</h2>
+    <p className="text-sm font-bold text-gray-500 mb-3">Ask a grown-up to solve this:</p>
+    <div className="text-3xl font-black mb-3" style={{ color: "#ff5c93" }}>{q.a} × {q.b} = ?</div>
+    <div className="grid grid-cols-3 gap-2 mb-2">{q.opts.map((n) => <button key={n} onClick={() => (n === q.ans ? onPass() : (setWrong(true), setTimeout(() => setWrong(false), 600)))} className="rounded-2xl py-4 text-2xl font-black text-white shadow active:scale-90" style={{ background: "linear-gradient(#7ed9ff,#3aa0ff)" }}>{n}</button>)}</div>
+    {wrong && <p className="text-sm font-black text-red-500 mb-1">Not quite — try again!</p>}
+    <button onClick={onClose} className="mt-1 text-xs font-bold text-gray-400 underline">cancel</button>
+  </Overlay>);
+}
+function SettingsToggle({ label, on, toggle }) { return <button onClick={toggle} className="w-full flex items-center justify-between rounded-2xl px-4 py-3 mb-2 shadow active:scale-95" style={{ background: "#fff", border: "3px solid #eee" }}><span className="font-black text-gray-700">{label}</span><span className="text-sm font-black px-3 py-1 rounded-full text-white" style={{ background: on ? "#7ed957" : "#bbb" }}>{on ? "ON" : "OFF"}</span></button>; }
+function SettingsPage({ muted, setMuted, musicOn, setMusicOn, onPrivacy, onReset, onClose }) {
+  return (<Overlay>
+    <h2 className="text-2xl font-black mb-3" style={{ color: "#a06bff" }}>⚙️ Settings</h2>
+    <SettingsToggle label="🔊 Sound effects" on={!muted} toggle={() => setMuted((m) => !m)} />
+    <SettingsToggle label="🎵 Music" on={musicOn} toggle={() => setMusicOn((m) => !m)} />
+    <button onClick={onPrivacy} className="w-full rounded-2xl px-4 py-3 mb-2 shadow font-black text-gray-700 active:scale-95" style={{ background: "#fff", border: "3px solid #eee" }}>🔐 Privacy Policy</button>
+    <button onClick={onReset} className="w-full rounded-2xl px-4 py-3 mb-3 shadow font-black text-white active:scale-95" style={{ background: "#ff7e1d" }}>🗑️ Start a new shop</button>
+    <button onClick={onClose} className="pulse-btn text-white text-lg font-black px-8 py-2.5 rounded-full shadow-xl active:scale-95" style={{ background: "linear-gradient(#ff7eb3,#ff5c93)" }}>Done</button>
+  </Overlay>);
+}
+function PrivacyPage({ onClose }) {
+  return (<Overlay>
+    <h2 className="text-xl font-black mb-2" style={{ color: "#a06bff" }}>🔐 Privacy Policy</h2>
+    <div className="text-left text-xs text-gray-600 space-y-2 mb-3 max-h-[42vh] overflow-y-auto pr-1">
+      <p><b>Ishana's Shop</b> is made for children and respects your family's privacy.</p>
+      <p>• We do <b>NOT</b> collect, store, or share any personal data.</p>
+      <p>• There are <b>no ads</b> and <b>no in-app purchases</b>.</p>
+      <p>• Progress is saved only on this device (local storage) — nothing is sent to any server.</p>
+      <p>• No logins, no accounts, no third-party tracking or analytics.</p>
+      <p>• The internet is used only once, to load the game files.</p>
+    </div>
+    <button onClick={onClose} className="pulse-btn text-white text-lg font-black px-8 py-2.5 rounded-full shadow-xl active:scale-95" style={{ background: "linear-gradient(#7ed957,#4caf2f)" }}>Back</button>
+  </Overlay>);
 }
 
 /* ============================== MAIN ===================================== */
@@ -891,16 +995,23 @@ function IshanaShop() {
   const [shake, setShake] = useState(false);
   const [reward, setReward] = useState(null);
   const [streak, setStreak] = useState(0);
+  const [muted, setMuted] = useState(() => { try { return localStorage.getItem("ishana_muted") === "1"; } catch (e) { return false; } });
+  const [musicOn, setMusicOn] = useState(() => { try { return localStorage.getItem("ishana_music") !== "0"; } catch (e) { return true; } });
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [gateNext, setGateNext] = useState(null); // overlay/action to open after the parental gate passes
+  const passGate = () => { const n = gateNext; setGateNext(null); if (n === "reset") { setOverlay(null); setConfirmReset(true); } else setOverlay(n); };
+  useEffect(() => { sounds.setMuted(muted); try { localStorage.setItem("ishana_muted", muted ? "1" : "0"); } catch (e) {} }, [muted]); // eslint-disable-line
+  useEffect(() => { try { localStorage.setItem("ishana_music", musicOn ? "1" : "0"); } catch (e) {} if (screen === "play" && !muted && musicOn) sounds.startMusic(); else sounds.stopMusic(); }, [screen, muted, musicOn]); // eslint-disable-line
   const timers = useRef([]); const modeHistory = useRef([]);
   const after = (ms, fn) => { const id = setTimeout(fn, ms); timers.current.push(id); return id; };
   const clearTimers = () => { timers.current.forEach(clearTimeout); timers.current = []; };
-  useEffect(() => () => clearTimers(), []);
+  useEffect(() => () => { clearTimers(); sounds.stopMusic(); }, []); // eslint-disable-line
   useEffect(() => { persist(save); }, [save]);
 
   const tierIdx = tierIndexForLevel(save.level);
   const world = WORLDS[tierIdx];
 
-  useEffect(() => { if (screen === "play" && save.daily.last !== today() && !overlay) { ovRef.current = {}; setOverlay("daily"); } }, [screen]); // eslint-disable-line
+  useEffect(() => { if (screen !== "play") return; if (!save.seenIntro) { setOverlay("intro"); return; } if (save.daily.last !== today() && !overlay) { ovRef.current = {}; setOverlay("daily"); } }, [screen, overlay]); // eslint-disable-line
 
   const pickMode = () => { let pool = MODES.filter((m) => { if ((m === "speed" || m === "mega") && save.level < 4) return false; if (m === "memory" && save.level < 3) return false; return true; }); const last = modeHistory.current[modeHistory.current.length - 1]; pool = pool.filter((m) => m !== last); const c = rand(pool); modeHistory.current = [...modeHistory.current, c].slice(-4); return c; };
   const newRound = useCallback(() => {
@@ -926,19 +1037,26 @@ function IshanaShop() {
     if (feedback) return; setFeedback("correct");
     const themeBonus = 1 + THEMES.filter((t) => themeDone(save.owned, t)).length * 0.1;
     const mult = (event ? event.mult : 1) * (customer.isRare ? 2 : 1), sb = streak >= 2 ? 1.5 : 1;
-    const coinsGain = Math.round((14 + save.level * 3 + (opts.bonusCoins || 0) * 3) * mult * sb * themeBonus);
+    const coinsGain = Math.round((10 + save.level * 2 + (opts.bonusCoins || 0) * 3) * mult * sb * themeBonus);
     const starsGain = 1 + (streak > 0 && streak % 4 === 3 ? 1 : 0) + (customer.isRare ? 1 : 0);
     setReward({ coins: coinsGain, stars: starsGain }); setStreak((s) => s + 1);
     sounds.ding(); sounds.correct(); setShowConfetti(true); setShake(true);
-    after(120, () => setShake(false)); after(420, () => { sounds.gulp(); setShowNyam(true); }); after(620, () => { sounds.yay(); sounds.coin(); });
-    after(1050, () => { setShowNyam(false); setBrainFreeze(true); }); after(2500, () => setBrainFreeze(false)); after(2700, () => setShowConfetti(false));
-    after(2900, () => {
+    after(120, () => setShake(false)); after(380, () => { sounds.gulp(); setShowNyam(true); }); after(560, () => { sounds.yay(); sounds.coin(); });
+    after(950, () => { setShowNyam(false); setBrainFreeze(true); }); after(1850, () => setBrainFreeze(false)); after(2050, () => setShowConfetti(false));
+    after(2250, () => {
       const oldLevel = save.level, newLevel = oldLevel + 1, oldTier = tierIndexForLevel(oldLevel), newTier = tierIndexForLevel(newLevel);
       const newRares = [...save.rares], newMet = [...save.met], q = [];
       RARE_KEYS.forEach((rk) => { if (newLevel >= RARES[rk].unlockLevel && !newRares.includes(rk)) { newRares.push(rk); if (!newMet.includes(rk)) newMet.push(rk); q.push({ kind: "rare", customer: rk }); } });
       if (newTier > oldTier) q.push({ kind: "milestone", tierIdx: newTier, world: WORLDS[newTier] });
       if (newLevel % 5 === 0) q.push({ kind: "mystery", reward: rollMysteryReward(newRares, newMet) });
-      setSave((s) => ({ ...s, level: newLevel, coins: s.coins + coinsGain, stars: s.stars + starsGain, xp: s.xp + 14, rares: newRares, met: newMet, best: Math.max(s.best, streak + 1) }));
+      // daily mission: serve MISSION_TARGET customers/day for a coin bonus
+      const mToday = save.mission && save.mission.date === today();
+      const served = (mToday ? save.mission.served : 0) + 1;
+      const wasRewarded = mToday ? save.mission.rewarded : false;
+      const hitGoal = !wasRewarded && served >= MISSION_TARGET;
+      const missionBonus = hitGoal ? MISSION_BONUS : 0;
+      if (hitGoal) q.push({ kind: "mystery", reward: { emoji: "🎯", label: "Daily Goal done! +" + MISSION_BONUS + " 🪙" } });
+      setSave((s) => ({ ...s, level: newLevel, coins: s.coins + coinsGain + missionBonus, stars: s.stars + starsGain, xp: s.xp + 14, rares: newRares, met: newMet, best: Math.max(s.best, streak + 1), mission: { date: today(), served, rewarded: wasRewarded || hitGoal } }));
       runQueue(q);
     });
   }, [feedback, event, customer, streak, save, sounds, newRound]);
@@ -948,7 +1066,7 @@ function IshanaShop() {
     if (!owned) { if (save.coins < i.cost) return; sounds.upgrade(); if (i.rarity === "epic" || i.rarity === "legendary") { sounds.rare(); setShowConfetti(true); after(1400, () => setShowConfetti(false)); } setSave((s) => { const ns = { ...s, coins: s.coins - i.cost, owned: [...s.owned, i.id] }; if (i.cat === "pet") ns.pet = i.id; else if (["dress", "shoes", "acc", "hat"].includes(i.cat)) ns.equipped = { ...s.equipped, [i.cat]: i.id }; return ns; }); return; }
     sounds.pop(); if (i.cat === "pet") setSave((s) => ({ ...s, pet: s.pet === i.id ? null : i.id })); else if (["dress", "shoes", "acc", "hat"].includes(i.cat)) setSave((s) => ({ ...s, equipped: { ...s.equipped, [i.cat]: s.equipped[i.cat] === i.id ? null : i.id } }));
   };
-  const claimDaily = () => { const d = save.daily.day % DAILY_REWARDS.length, r = DAILY_REWARDS[d]; sounds.coin(); setSave((s) => { const ns = { ...s, daily: { last: today(), day: s.daily.day + 1 } }; if (r.coins) ns.coins = s.coins + r.coins; if (r.grant && !s.owned.includes(r.grant)) ns.owned = [...s.owned, r.grant]; return ns; }); setOverlay(null); };
+  const claimDaily = () => { if (save.daily.last === today()) { setOverlay(null); return; } const d = save.daily.day % DAILY_REWARDS.length, r = DAILY_REWARDS[d]; sounds.coin(); setSave((s) => { const ns = { ...s, daily: { last: today(), day: s.daily.day + 1 } }; if (r.coins) ns.coins = s.coins + r.coins; if (r.grant && !s.owned.includes(r.grant)) ns.owned = [...s.owned, r.grant]; return ns; }); setOverlay(null); };
   const startGame = () => { sounds.getCtx(); setScreen("play"); setTab("shop"); newRound(); };
   const resetGame = () => { const f = defaultSave(); setSave(f); persist(f); modeHistory.current = []; setStreak(0); setScreen("welcome"); setOverlay(null); };
 
@@ -957,31 +1075,48 @@ function IshanaShop() {
   return (
     <div className={"w-full flex justify-center " + (shake ? "screen-shake" : "")} style={{ height: "100dvh", overflow: "hidden", background: "linear-gradient(160deg,#fff0f6,#e7f9ff 55%,#fff7e6)", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}>
       <StyleKeyframes />
-      <div className="pointer-events-none fixed inset-0 overflow-hidden -z-0">{Array.from({ length: 14 }).map((_, i) => <div key={i} className="absolute float-slow" style={{ left: (i * 7.3 % 100) + "%", top: ((i * 13) % 100) + "%", animationDelay: (i % 5) * 0.6 + "s", opacity: 0.5 }}>{["⭐", "✨", "🍬", "🍦"][i % 4]}</div>)}</div>
+      <div className="pointer-events-none fixed inset-0 overflow-hidden -z-0">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="absolute float-slow" style={{ left: (i * 17.3 % 100) + "%", top: ((i * 29) % 100) + "%", animationDelay: (i % 5) * 0.6 + "s", opacity: 0.45 }}>{["⭐", "✨", "🍬", "🍦"][i % 4]}</div>)}</div>
       <Confetti show={showConfetti} />
 
-      <div className="w-full max-w-md mx-auto relative z-10 flex flex-col" style={{ height: "100%" }}>
+      <div className="w-full max-w-md md:max-w-lg mx-auto relative z-10 flex flex-col" style={{ height: "100%" }}>
         {/* brain-freeze tint stays over the game column so it reads well on mobile */}
         {brainFreeze && (<div className="pointer-events-none absolute inset-0 z-30 rounded-[2rem] overflow-hidden" style={{ background: "rgba(80,170,255,0.22)" }}><div className="absolute left-1/2 -translate-x-1/2 text-2xl sm:text-3xl font-black text-sky-700 shiver text-center w-full px-2" style={{ top: "30%" }}>❄️ BRAIN FREEZE! ❄️</div></div>)}
         {screen === "welcome" && (
           <div className="flex-1 min-h-0 flex items-center justify-center p-3">
-          <div className="text-center rounded-[2rem] p-6 shadow-2xl w-full overflow-y-auto" style={{ maxHeight: "100%", background: "rgba(255,255,255,0.78)", border: "4px solid #ffd1e3" }}>
-            <h1 className="text-4xl font-black mb-1" style={{ color: "#ff5c93" }}>Ishana's Shop</h1>
-            <p className="text-base mb-4 font-bold" style={{ color: "#8a5cff" }}>🍦 Build the coolest ice cream shop! 🍦</p>
-            <div className="flex justify-center mb-5"><FullIshana equipped={save.equipped} pet={save.pet} size={150} mood="idle" /></div>
-            <button onClick={startGame} className="pulse-btn inline-flex items-center gap-2 text-white text-3xl font-black px-10 py-5 rounded-full shadow-xl active:scale-95 transition" style={{ background: "linear-gradient(#ff7eb3,#ff5c93)" }}>▶ PLAY</button>
-            {save.level > 1 && (<div className="mt-4 text-sm font-bold text-gray-500">Shop level {save.level} · 🪙 {save.coins} · ⭐ {save.stars}<div><button onClick={resetGame} className="mt-2 text-xs underline text-gray-400">Start a new shop</button></div></div>)}
+          <div className="relative rounded-[2rem] shadow-2xl w-full overflow-hidden flex flex-col items-center" style={{ height: "100%", border: "4px solid #ffd1e3", background: "linear-gradient(#cdefff,#ffe6f3)" }}>
+            {/* clean pastel sky background */}
+            <ImgOr src={ASSET.menu} className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 0 }} fallback={null} />
+            {/* TOP: logo + tagline pill */}
+            <div className="relative shrink-0 flex flex-col items-center pt-5 px-4" style={{ zIndex: 2 }}>
+              <ImgOr src={ASSET.logo} className="drop-shadow-lg" style={{ height: 92, objectFit: "contain" }} fallback={<h1 className="text-4xl font-black" style={{ color: "#ff5c93", textShadow: "0 2px 8px #fff" }}>Ishana's Shop</h1>} />
+              <div className="mt-2 px-4 py-1 rounded-full text-sm font-bold text-white shadow" style={{ background: "rgba(255,124,179,0.92)" }}>🍦 Build the coolest ice cream shop!</div>
+            </div>
+            {/* MIDDLE: Ishana hero (fills remaining space) */}
+            <div className="relative flex-1 min-h-0 w-full flex items-end justify-center" style={{ zIndex: 2 }}>
+              <ImgOr src={ishanaImg(save.equipped)} className="object-contain drop-shadow-xl" style={{ maxHeight: "98%", maxWidth: "80%" }} fallback={<FullIshana equipped={save.equipped} pet={save.pet} size={150} mood="idle" />} />
+            </div>
+            {/* BOTTOM: PLAY */}
+            <div className="relative shrink-0 flex flex-col items-center pb-6" style={{ zIndex: 2 }}>
+              <button onClick={startGame} className="pulse-btn inline-flex items-center gap-2 text-white text-3xl font-black px-12 py-5 rounded-full shadow-xl active:scale-95 transition" style={{ background: "linear-gradient(#ff7eb3,#ff5c93)" }}>▶ PLAY</button>
+              <button onClick={() => { setGateNext("settings"); setOverlay("gate"); }} className="mt-3 inline-flex items-center gap-1 text-sm font-black text-gray-600 bg-white/80 rounded-full px-4 py-2 shadow active:scale-95">⚙️ Settings</button>
+              {save.level > 1 && (<div className="mt-2 text-xs font-bold text-gray-600 bg-white/70 rounded-full px-3 py-1">Lv {save.level} · 🪙 {save.coins} · ⭐ {save.stars} · <button onClick={() => { setGateNext("reset"); setOverlay("gate"); }} className="underline">new shop</button></div>)}
+            </div>
           </div>
           </div>
         )}
 
         {screen === "play" && (
           <div className="flex-1 min-h-0 flex flex-col p-2">
-            <div className="shrink-0 flex items-center justify-between gap-1 mb-2 text-xs sm:text-sm">
-              <div className="px-3 py-1 rounded-full font-black text-white shadow" style={{ background: "#8a5cff" }}>Lv {save.level}</div>
-              <div className="px-3 py-1 rounded-full font-black bg-white shadow" style={{ color: "#f5a300" }}>⭐ {save.stars}</div>
-              <div className="px-3 py-1 rounded-full font-black bg-white shadow" style={{ color: "#ff9f1d" }}><span key={save.coins} className="inline-block coin-pop">🪙 {save.coins}</span></div>
-              <button onClick={() => { ovRef.current = {}; setOverlay("daily"); }} className="px-3 py-1 rounded-full font-black text-white shadow active:scale-95" style={{ background: "#ff7e1d" }}>🎁</button>
+            <div className="shrink-0 mb-2">
+              <div className="flex items-center justify-between gap-1 text-xs sm:text-sm">
+                <div className="px-3 py-1.5 rounded-full font-black text-white shadow" style={{ background: "#8a5cff" }}>Lv {save.level}</div>
+                <div className="px-3 py-1.5 rounded-full font-black bg-white shadow" style={{ color: "#f5a300" }}>⭐ {save.stars}</div>
+                <div className="px-3 py-1.5 rounded-full font-black bg-white shadow text-base" style={{ color: "#ff9f1d", border: "2px solid #ffe09a" }}><span key={save.coins} className="inline-block coin-pop">🪙 {save.coins}</span></div>
+                <button onClick={() => setMuted((m) => !m)} aria-label={muted ? "unmute" : "mute"} className="flex items-center justify-center rounded-full shadow active:scale-90" style={{ width: 44, height: 44, fontSize: 19, background: muted ? "#9aa3ad" : "#4dd0e1" }}>{muted ? "🔇" : "🔊"}</button>
+                <button onClick={() => { ovRef.current = {}; setOverlay("daily"); }} aria-label="daily reward" className="flex items-center justify-center rounded-full shadow active:scale-90" style={{ width: 44, height: 44, fontSize: 21, background: "#ff7e1d" }}>🎁</button>
+              </div>
+              <ShopProgress level={save.level} />
+              {(() => { const ms = save.mission && save.mission.date === today() ? save.mission.served : 0, done = ms >= MISSION_TARGET; return <div className="mt-1 text-center text-[11px] font-black" style={{ color: done ? "#4caf2f" : "#ff7e1d" }}>{done ? "🎯 Daily goal complete! 🎉" : "🎯 Daily goal: " + Math.min(ms, MISSION_TARGET) + "/" + MISSION_TARGET + " customers"}</div>; })()}
             </div>
 
             {/* main content fills remaining height; nav is in-flow below (no overlap) */}
@@ -997,7 +1132,7 @@ function IshanaShop() {
                     </StorefrontScene>
                   </div>
                   <div className="shrink-0 flex items-center justify-between my-1.5 px-1"><span className="text-sm font-bold text-gray-500">{customer.isRare ? "✨ " : ""}{CUSTOMER_INFO[customer.type].name}</span><span className="text-xs font-black px-2 py-0.5 rounded-full text-white" style={{ background: "#4dd0e1" }}>{MODE_LABELS[mode]}</span></div>
-                  <div className={"shrink-0 " + (shake && feedback === "wrong" ? "shake" : "")}><ModeComp key={roundKey} level={save.level} locked={locked} sounds={sounds} onSolve={onSolve} onMiss={onMiss} /></div>
+                  <div className={"shrink-0 " + (shake && feedback === "wrong" ? "shake" : "")}><ModeComp key={roundKey} level={save.level} locked={locked} sounds={sounds} speak={sounds.speak} onSolve={onSolve} onMiss={onMiss} /></div>
                   {feedback === "wrong" && <p className="shrink-0 text-center mt-1 text-base font-black" style={{ color: "#ff7e1d" }}>😆 Oops! Try again!</p>}
                 </div>
               )}
@@ -1009,7 +1144,7 @@ function IshanaShop() {
             {/* bottom nav — in-flow, never overlaps content */}
             <div className="shrink-0 flex justify-center pt-2">
               <div className="flex gap-1 px-2 py-1.5 rounded-[1.6rem] shadow-2xl bg-white/95 backdrop-blur" style={{ border: "3px solid #ffd1e3" }}>
-                {[["shop", "🍦", "Serve"], ["decorate", "🏪", "Upgrade"], ["dressup", "👗", "Dress Up"], ["collection", "⭐", "Album"]].map(([id, e, label]) => { const act = tab === id; return (<button key={id} onClick={() => setTab(id)} className="flex flex-col items-center justify-center rounded-2xl px-2.5 py-1 active:scale-90 transition" style={{ background: act ? "linear-gradient(#ff7eb3,#ff5c93)" : "transparent" }}><span className="text-2xl leading-none">{e}</span><span className="text-[9px] font-black mt-0.5" style={{ color: act ? "#fff" : "#b08" }}>{label}</span></button>); })}
+                {[["shop", "🍦", "Serve"], ["decorate", "🏪", "Upgrade"], ["dressup", "👗", "Dress Up"], ["collection", "⭐", "Album"]].map(([id, e, label]) => { const act = tab === id; return (<button key={id} onClick={() => setTab(id)} className="flex flex-col items-center justify-center rounded-2xl px-2.5 py-1 active:scale-90 transition" style={{ background: act ? "linear-gradient(#ff7eb3,#ff5c93)" : "transparent" }}><span className="text-2xl leading-none">{e}</span><span className="text-[10px] font-black mt-0.5" style={{ color: act ? "#fff" : "#b08" }}>{label}</span></button>); })}
               </div>
             </div>
           </div>
@@ -1018,7 +1153,12 @@ function IshanaShop() {
         {overlay === "mystery" && <MysteryBox reward={ovRef.current.reward} sounds={sounds} onContinue={ovRef.current.onContinue} />}
         {overlay === "milestone" && <Milestone kind={ovRef.current.world ? "world" : "shop"} tierIdx={ovRef.current.tierIdx} world={ovRef.current.world} onContinue={ovRef.current.onContinue} />}
         {overlay === "rare" && <RareArrival customer={ovRef.current.customer} onContinue={ovRef.current.onContinue} />}
-        {overlay === "daily" && <DailyReward day={save.daily.day % DAILY_REWARDS.length} onClaim={claimDaily} />}
+        {overlay === "daily" && <DailyReward day={save.daily.day % DAILY_REWARDS.length} claimed={save.daily.last === today()} onClaim={claimDaily} onClose={() => setOverlay(null)} />}
+        {overlay === "intro" && <IntroCoach onClose={() => { setSave((s) => ({ ...s, seenIntro: true })); setOverlay(null); }} speak={sounds.speak} />}
+        {overlay === "gate" && <ParentalGate onPass={passGate} onClose={() => { setOverlay(null); setGateNext(null); }} />}
+        {overlay === "settings" && <SettingsPage muted={muted} setMuted={setMuted} musicOn={musicOn} setMusicOn={setMusicOn} onPrivacy={() => setOverlay("privacy")} onReset={() => { setOverlay(null); setConfirmReset(true); }} onClose={() => setOverlay(null)} />}
+        {overlay === "privacy" && <PrivacyPage onClose={() => setOverlay("settings")} />}
+        {confirmReset && (<Overlay><h2 className="text-2xl font-black mb-2" style={{ color: "#ff5c93" }}>Start a new shop?</h2><p className="text-sm font-bold text-gray-500 mb-4">This erases your level, coins, outfits and everything you built. Ask a grown-up first! 🧑‍🍼</p><div className="flex gap-3 justify-center"><button onClick={() => setConfirmReset(false)} className="text-base font-black px-6 py-3 rounded-full shadow active:scale-95" style={{ background: "#eee", color: "#777" }}>Keep my shop</button><button onClick={() => { setConfirmReset(false); resetGame(); }} className="text-base font-black text-white px-6 py-3 rounded-full shadow active:scale-95" style={{ background: "linear-gradient(#ff7eb3,#ff5c93)" }}>Start over</button></div></Overlay>)}
       </div>
     </div>
   );
@@ -1046,6 +1186,8 @@ function StyleKeyframes() {
       .ishana-cheer{animation:cheerAnim .6s ease-in-out infinite}
       @keyframes danceAnim {0%,100%{transform:rotate(-6deg) translateY(0)}50%{transform:rotate(6deg) translateY(-8px)}}
       .ishana-dance{animation:danceAnim .5s ease-in-out infinite}
+      @keyframes previewPulse {0%,100%{filter:brightness(1);outline-color:rgba(160,107,255,0)}50%{filter:brightness(1.12);outline-color:rgba(160,107,255,.9)}}
+      .preview-pulse{outline:3px dashed rgba(160,107,255,0);outline-offset:2px;border-radius:10px;animation:previewPulse .9s ease-in-out infinite}
       @keyframes scoopPop {0%{transform:scale(0) translateY(-20px)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
       .scoop-pop{animation:scoopPop .35s cubic-bezier(.34,1.56,.64,1)}
       @keyframes counterPop {0%{transform:scale(.4);opacity:0}60%{transform:scale(1.3)}100%{transform:scale(1);opacity:1}}
