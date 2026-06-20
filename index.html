@@ -642,6 +642,10 @@ function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "
       {/* ---------- FLOOR band (peeks above the counter; styled by floor upgrade) ---------- */}
       <div className={"absolute left-0 right-0 bottom-0 " + pulse("floor")} style={{ height: "38%", background: floor ? floor.bg : "linear-gradient(#ffe7d2,#ffd6bd)", borderTop: "3px solid rgba(255,255,255,0.7)", boxShadow: "inset 0 6px 10px rgba(255,255,255,0.35)", zIndex: 1 }} />
 
+      {/* ---------- BACK COUNTER ledge — a workstation surface the machine, staff
+           & helper visibly stand ON (so they don't float against the wall) ---------- */}
+      <div className="absolute left-0 right-0" style={{ bottom: "31%", height: "9%", background: "linear-gradient(#fff5ec,#ffe3d0)", borderTop: "3px solid #ffffff", boxShadow: "0 -3px 7px rgba(0,0,0,0.07)", zIndex: 1 }} />
+
       {/* ---------- ROOF / AWNING valance across the top ---------- */}
       {roof && (
         <div className={"absolute top-0 left-0 right-0 " + pulse("roof")} style={{ height: "6.5%", background: roofBg, zIndex: 4, boxShadow: roof.glow ? "0 0 16px 3px " + roof.glow : "0 3px 8px rgba(0,0,0,0.12)" }}>
@@ -676,10 +680,10 @@ function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "
       {/* ---------- machine + helper on the BACK COUNTER, left of Ishana, sitting
            ABOVE the counter line (bottom>32%) so they stay visible, behind her
            (z2) and clear of the customer on the right ---------- */}
-      {mac && <div className={"absolute " + pulse("machine")} style={{ left: "12%", bottom: "33%", width: "16%", zIndex: 2, filter: fancy(mac.rarity) ? "drop-shadow(0 0 10px gold)" : "drop-shadow(0 3px 5px rgba(0,0,0,.15))" }}>
+      {mac && <div className={"absolute " + pulse("machine")} style={{ left: "12%", bottom: "35%", width: "16%", zIndex: 2, filter: fancy(mac.rarity) ? "drop-shadow(0 0 10px gold)" : "drop-shadow(0 3px 5px rgba(0,0,0,.15))" }}>
         <ImgOr src={ASSET.machine[mac.base]} className="w-full object-contain" fallback={<div className="flex items-center justify-center rounded-2xl" style={{ aspectRatio: "1", fontSize: 28, background: "radial-gradient(circle at 50% 40%, #ffffffcc, #e6f7ffcc)", boxShadow: "0 4px 8px rgba(0,0,0,.1)" }}>{mac.emoji}</div>} />
       </div>}
-      {helper && <div className={"absolute " + (customerHappy ? "cust-happy" : "bob") + " " + pulse("helper")} style={{ left: "0%", bottom: "33%", width: "14%", zIndex: 2, filter: "drop-shadow(0 3px 5px rgba(0,0,0,.2))" }} title="Your staff">
+      {helper && <div className={"absolute " + (customerHappy ? "cust-happy" : "bob") + " " + pulse("helper")} style={{ left: "1%", bottom: "35%", width: "14%", zIndex: 2, filter: "drop-shadow(0 3px 5px rgba(0,0,0,.2))" }} title="Your staff">
         <ImgOr src={STAFF_ART[helper.id]} className="w-full object-contain" fallback={<div className="flex items-center justify-center" style={{ fontSize: 30 }}>{helper.emoji}</div>} />
       </div>}
 
