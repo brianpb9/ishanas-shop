@@ -254,7 +254,7 @@ function zonePos(zone) {
   if (zone === "wall") return { x: 38 + Math.random() * 20, y: 30 }; // mid wall, clear of window & shelf
   if (zone === "shelf") return { x: 68 + Math.random() * 16, y: 16 };
   if (zone === "counter") return { x: Math.random() < 0.5 ? 18 + Math.random() * 18 : 54 + Math.random() * 12, y: 71 };
-  return { x: 24 + Math.random() * 20, y: 88 }; // floor: on the floor IN FRONT of the counter base (clear of staff/machine on the back counter)
+  return { x: 22 + Math.random() * 22, y: 91 }; // floor: low, in front of the counter BASE (short items only, so they don't rise into the glass)
 }
 const MAX_PLACED = 8; // keep the shop tidy — "less but better"
 
@@ -663,7 +663,7 @@ function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "
 
       {/* ---------- placed decorations (draggable in edit mode; soft base so the
            emoji reads as a placed object, not a floating glyph) ---------- */}
-      {placed.map((p) => { const D = ITEM[p.id]; if (!D) return null; const zn = D.zone || "floor"; const front = zn === "floor" || zn === "counter"; const art = DECOR_ART[p.id]; const w = zn === "wall" ? "15%" : zn === "shelf" ? "12%" : "17%"; return (
+      {placed.map((p) => { const D = ITEM[p.id]; if (!D) return null; const zn = D.zone || "floor"; const front = zn === "floor" || zn === "counter"; const art = DECOR_ART[p.id]; const w = zn === "wall" ? "14%" : zn === "shelf" ? "12%" : zn === "counter" ? "14%" : "13%"; return (
         <div key={p.id} onPointerDown={editable ? (e) => onItemDown(e, p.id) : undefined} onDoubleClick={editable ? () => onUp(p.id, true) : undefined}
           className={"absolute flex items-end justify-center " + (editable ? "cursor-grab active:cursor-grabbing" : "")} style={{ left: p.x + "%", top: p.y + "%", transform: "translate(-50%,-50%)", zIndex: front ? 6 : 3, width: art ? w : undefined, touchAction: "none" }} title={editable ? "Drag · double-tap to put away" : undefined}>
           {art ? (
@@ -692,7 +692,7 @@ function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "
       {/* ---------- PET — own zone, front bottom-left, always ≥90% visible
            (in front of the counter, clear of Ishana & the customer) ---------- */}
       {pet && ITEM[pet] && (
-        <div className="absolute pet-hop" style={{ left: "4%", bottom: "4%", width: "16%", zIndex: 7, filter: "drop-shadow(0 5px 5px rgba(0,0,0,.25))" }} title="Your pet">
+        <div className="absolute pet-hop" style={{ left: "5%", bottom: "4%", width: "19%", zIndex: 7, filter: "drop-shadow(0 5px 5px rgba(0,0,0,.25))" }} title="Your pet">
           <ImgOr src={PET_ART[pet]} className="w-full object-contain" fallback={<div className="flex items-end justify-center leading-none" style={{ fontSize: 54 }}>{ITEM[pet].emoji}</div>} />
         </div>
       )}
