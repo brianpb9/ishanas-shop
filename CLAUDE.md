@@ -116,6 +116,15 @@ animations (never a stable frame). React state updates are async, so `await` a
   arms/head/hat. The portrait draws a built-in striped cap; pass `cap={!hat}` so
   an equipped hat doesn't double up. Hats/head-accessories sit ABOVE the head;
   glasses (`place:"face"`) over the eyes. Default outfit = pink ICE CREAM apron.
+- **Painted profile customers + pets:** regulars (bear/penguin/cat/frog) + the
+  elephant rare are painted **3/4 sprites facing LEFT** toward Ishana (no mirror;
+  `CustomerView` just adds a small lean). Other rares keep front-view art. Each
+  pet has a painted sprite (`PET_ART`, `assets/pet-*.png`) with emoji fallback.
+  Customer size uses `CUSTOMER_SCALE` (wide animals shrink) + a ground shadow.
+  NOTE: white-bg gens were background-removed **locally** with a GDI+ border
+  flood-fill (PowerShell) when image-MCP credits ran out — works because the art
+  has solid-white bg + bold outlines (keeps interior white). Some "ordering at a
+  counter" gens added scene junk (menus/counters) → those were discarded.
 - **Customers** = cute chibi `ChibiAnimal` (big head/eyes, pastel): regulars
   bear/penguin/cat/frog; rares rabbit/elephant/panda/fox/owl/bird unlock by
   level. `CUSTOMER_INFO[type]` has a small `emoji` for tiny UI; the scene renders

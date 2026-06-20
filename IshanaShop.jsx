@@ -71,9 +71,9 @@ const CUSTOMER_INFO = {
   bear: { emoji: "🐻", name: "Bobo Bear" }, penguin: { emoji: "🐧", name: "Pip Penguin" }, cat: { emoji: "🐱", name: "Kiki Cat" }, frog: { emoji: "🐸", name: "Freddy Frog" },
   ...Object.fromEntries(RARE_KEYS.map((k) => [k, { emoji: RARES[k].emoji, name: RARES[k].name }])),
 };
-// Customer sprites: regulars (bear/penguin/cat/frog) are painted 3/4 facing LEFT
-// toward Ishana (no mirror needed); rares still use front-view art until their
-// 3/4 sprites are background-removed (raws generated, pending credits).
+// Customer sprites: regulars (bear/penguin/cat/frog) + elephant are painted 3/4
+// facing LEFT toward Ishana (no mirror needed); the other rares keep front-view
+// art (their 3/4 gens came with background scene junk and were reverted).
 // Per-animal width factor so wide sprites (fox tail, panda, elephant) never
 // out-size Ishana. Applied to the base customer width in the scene.
 const CUSTOMER_SCALE = { bear: 0.78, penguin: 0.86, cat: 0.82, frog: 0.8, rabbit: 0.82, elephant: 0.72, panda: 0.76, fox: 0.72, owl: 0.78, bird: 0.86 };
