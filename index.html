@@ -50,6 +50,8 @@ const ishanaImg = (eq) => (eq && eq.dress && OUTFITS[eq.dress]) || ASSET.hero;
 const DECOR_ART = { decor_plantsmall: "assets/decor-plant.png", decor_flowerpot: "assets/decor-plant.png", decor_lamp: "assets/decor-lamp.png", decor_frame: "assets/decor-frame.png", decor_table: "assets/decor-table.png" };
 // Painted staff characters (helper id → png); others fall back to emoji.
 const STAFF_ART = { helper_bunny: "assets/staff-bunny.png", helper_kitty: "assets/staff-cat.png" };
+// Painted pet companions (pet id → png); others fall back to emoji.
+const PET_ART = { pet_bunny: "assets/pet-bunny.png", pet_kitty: "assets/pet-kitty.png", pet_penguin: "assets/pet-penguin.png", pet_fox: "assets/pet-fox.png", pet_panda: "assets/pet-panda.png", pet_unicorn: "assets/pet-unicorn.png", pet_dragon: "assets/pet-dragon.png" };
 const SAVE_KEY = "ishana_shop_save_v5";
 
 /* ============================== CORE DATA ================================ */
@@ -95,6 +97,12 @@ const CUSTOMER_INFO = {
   bear: { emoji: "🐻", name: "Bobo Bear" }, penguin: { emoji: "🐧", name: "Pip Penguin" }, cat: { emoji: "🐱", name: "Kiki Cat" }, frog: { emoji: "🐸", name: "Freddy Frog" },
   ...Object.fromEntries(RARE_KEYS.map((k) => [k, { emoji: RARES[k].emoji, name: RARES[k].name }])),
 };
+// Customer sprites: regulars (bear/penguin/cat/frog) are painted 3/4 facing LEFT
+// toward Ishana (no mirror needed); rares still use front-view art until their
+// 3/4 sprites are background-removed (raws generated, pending credits).
+// Per-animal width factor so wide sprites (fox tail, panda, elephant) never
+// out-size Ishana. Applied to the base customer width in the scene.
+const CUSTOMER_SCALE = { bear: 0.78, penguin: 0.86, cat: 0.82, frog: 0.8, rabbit: 0.82, elephant: 0.72, panda: 0.76, fox: 0.72, owl: 0.78, bird: 0.86 };
 
 const RARITY = {
   common:    { name: "Common",    color: "#9aa3ad", cost: 120 },
@@ -586,12 +594,12 @@ function CustomerView({ customer, state, size }) {
           </div>
         </div>
       )}
-      {/* slight lean toward Ishana, and mirror so the customer turns to face her */}
-      <div style={{ transform: "rotate(-4deg)", transformOrigin: "bottom center", width: "100%" }}>
-        <div style={{ transform: "scaleX(-1)" }}>
-          <ImgOr src={"assets/animal-" + customer.type + ".png"} className={anim + " object-contain"} style={{ ...imgStyle, filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.15))" }} fallback={<div className={anim}><ChibiAnimal type={customer.type} state={freeze ? "freeze" : "wait"} size={size || 150} /></div>} />
-        </div>
+      {/* art is drawn in 3/4 view already facing LEFT toward Ishana — just a tiny lean */}
+      <div style={{ transform: "rotate(-3deg)", transformOrigin: "bottom center", width: "100%" }}>
+        <ImgOr src={"assets/animal-" + customer.type + ".png"} className={anim + " object-contain"} style={{ ...imgStyle, filter: "drop-shadow(0 6px 5px rgba(0,0,0,0.22))" }} fallback={<div className={anim}><ChibiAnimal type={customer.type} state={freeze ? "freeze" : "wait"} size={size || 150} /></div>} />
       </div>
+      {/* ground shadow so the customer feels planted, not floating */}
+      <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: 2, width: "58%", height: 10, background: "rgba(0,0,0,0.14)", borderRadius: "50%", zIndex: -1 }} />
     </div>
   );
 }
@@ -654,7 +662,7 @@ function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "
       </div>
 
       {/* ---------- SHELF with topping jars (small, high-right) ---------- */}
-      <div className="absolute" style={{ right: "4%", top: roof ? "14%" : "9%", width: "30%", zIndex: 1, filter: "drop-shadow(0 3px 5px rgba(0,0,0,.08))" }}>
+      <div className="absolute" style={{ right: "7%", top: roof ? "14%" : "9%", width: "27%", zIndex: 1, filter: "drop-shadow(0 3px 5px rgba(0,0,0,.08))" }}>
         <ImgOr src={ASSET.shelf} className="w-full object-contain" fallback={<div className="flex gap-1.5 justify-center">{tubs.map((c, i) => <div key={i} style={{ width: 15, height: 19, background: c, borderRadius: 4 }} />)}</div>} />
       </div>
 
@@ -668,10 +676,10 @@ function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "
       {/* ---------- machine + helper on the BACK COUNTER, left of Ishana, sitting
            ABOVE the counter line (bottom>32%) so they stay visible, behind her
            (z2) and clear of the customer on the right ---------- */}
-      {mac && <div className={"absolute " + pulse("machine")} style={{ left: "16%", bottom: "33%", width: "17%", zIndex: 2, filter: fancy(mac.rarity) ? "drop-shadow(0 0 10px gold)" : "drop-shadow(0 3px 5px rgba(0,0,0,.15))" }}>
+      {mac && <div className={"absolute " + pulse("machine")} style={{ left: "14%", bottom: "33%", width: "16%", zIndex: 2, filter: fancy(mac.rarity) ? "drop-shadow(0 0 10px gold)" : "drop-shadow(0 3px 5px rgba(0,0,0,.15))" }}>
         <ImgOr src={ASSET.machine[mac.base]} className="w-full object-contain" fallback={<div className="flex items-center justify-center rounded-2xl" style={{ aspectRatio: "1", fontSize: 28, background: "radial-gradient(circle at 50% 40%, #ffffffcc, #e6f7ffcc)", boxShadow: "0 4px 8px rgba(0,0,0,.1)" }}>{mac.emoji}</div>} />
       </div>}
-      {helper && <div className={"absolute " + (customerHappy ? "cust-happy" : "bob") + " " + pulse("helper")} style={{ left: "0%", bottom: "33%", width: "16%", zIndex: 2, filter: "drop-shadow(0 3px 5px rgba(0,0,0,.2))" }} title="Your staff">
+      {helper && <div className={"absolute " + (customerHappy ? "cust-happy" : "bob") + " " + pulse("helper")} style={{ left: "0%", bottom: "33%", width: "14%", zIndex: 2, filter: "drop-shadow(0 3px 5px rgba(0,0,0,.2))" }} title="Your staff">
         <ImgOr src={STAFF_ART[helper.id]} className="w-full object-contain" fallback={<div className="flex items-center justify-center" style={{ fontSize: 30 }}>{helper.emoji}</div>} />
       </div>}
 
@@ -706,14 +714,14 @@ function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "
       {/* ---------- PET — own zone, front bottom-left, always ≥90% visible
            (in front of the counter, clear of Ishana & the customer) ---------- */}
       {pet && ITEM[pet] && (
-        <div className="absolute pet-hop flex items-end justify-center" style={{ left: "4%", bottom: "3%", zIndex: 6 }} title="Your pet">
-          <div className="relative leading-none" style={{ fontSize: 42, filter: "drop-shadow(0 4px 4px rgba(0,0,0,.22))" }}>{ITEM[pet].emoji}<div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: 0, width: 30, height: 7, background: "rgba(0,0,0,.12)", borderRadius: "50%" }} /></div>
+        <div className="absolute pet-hop" style={{ left: "4%", bottom: "4%", width: "16%", zIndex: 7, filter: "drop-shadow(0 5px 5px rgba(0,0,0,.25))" }} title="Your pet">
+          <ImgOr src={PET_ART[pet]} className="w-full object-contain" fallback={<div className="flex items-end justify-center leading-none" style={{ fontSize: 54 }}>{ITEM[pet].emoji}</div>} />
         </div>
       )}
 
       {/* ---------- CUSTOMER — serve mode only; slides in, faces Ishana ---------- */}
       {mode === "serve" && customer && (
-        <div key={custKey} className="absolute cust-enter" style={{ right: "0%", bottom: "4%", width: "48%", zIndex: 7 }}>
+        <div key={custKey} className="absolute cust-enter" style={{ right: "2%", bottom: "3%", width: Math.round(46 * (CUSTOMER_SCALE[customer.type] || 0.82)) + "%", zIndex: 7 }}>
           <CustomerView customer={customer} state={freeze ? "freeze" : customerHappy ? "happy" : "wait"} />
         </div>
       )}
