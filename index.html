@@ -279,8 +279,8 @@ const byCat = (cat) => CATALOG.filter((i) => i.cat === cat);
 function zonePos(zone) {
   if (zone === "wall") return { x: 38 + Math.random() * 20, y: 30 }; // mid wall, clear of window & shelf
   if (zone === "shelf") return { x: 68 + Math.random() * 16, y: 16 };
-  if (zone === "counter") return { x: Math.random() < 0.5 ? 18 + Math.random() * 20 : 54 + Math.random() * 12, y: 71 };
-  return { x: 8 + Math.random() * 18, y: 62 }; // floor (left side)
+  if (zone === "counter") return { x: Math.random() < 0.5 ? 18 + Math.random() * 18 : 54 + Math.random() * 12, y: 71 };
+  return { x: 24 + Math.random() * 20, y: 88 }; // floor: on the floor IN FRONT of the counter base (clear of staff/machine on the back counter)
 }
 const MAX_PLACED = 8; // keep the shop tidy — "less but better"
 
@@ -588,9 +588,9 @@ function CustomerView({ customer, state, size }) {
       {happy && <div className="pointer-events-none absolute left-1/2 -translate-x-1/2" style={{ top: "2%", zIndex: 8 }}>{[-18, 0, 18].map((dx, i) => <span key={i} className="heart-float absolute" style={{ left: dx, fontSize: 20, animationDelay: i * 0.16 + "s" }}>❤️</span>)}</div>}
       {/* order speech bubble — tail points LEFT toward Ishana, so it reads as "ordering" */}
       {!happy && !freeze && (
-        <div className="order-bob absolute" style={{ top: "0%", left: "-4%", zIndex: 8 }}>
-          <div className="relative bg-white rounded-2xl px-2 py-1 shadow" style={{ border: "2px solid #ffd1e3", fontSize: 17, lineHeight: 1 }}>🍦
-            <div className="absolute" style={{ left: 7, bottom: -7, width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "8px solid #fff" }} />
+        <div className="order-bob absolute" style={{ top: "-2%", left: "-6%", zIndex: 8 }}>
+          <div className="relative bg-white rounded-2xl px-2.5 py-1.5 shadow-md" style={{ border: "2px solid #ffd1e3", fontSize: 22, lineHeight: 1 }}>🍦
+            <div className="absolute" style={{ left: 8, bottom: -8, width: 0, height: 0, borderLeft: "7px solid transparent", borderRight: "7px solid transparent", borderTop: "9px solid #fff" }} />
           </div>
         </div>
       )}
@@ -637,7 +637,7 @@ function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "
       {/* ---------- WALL (colour driven by the wall upgrade / theme) ---------- */}
       <div className={"absolute inset-0 " + pulse("wall")} style={{ background: wallBg }} />
       <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(90deg, rgba(255,255,255,0.5) 0 28px, rgba(255,255,255,0) 28px 56px)" }} />
-      <div className="absolute inset-0 opacity-15" style={{ backgroundImage: (wall && wall.dark) ? "radial-gradient(#ffffff66 1px,transparent 1px)" : "radial-gradient(#ffffff 2px, transparent 2px)", backgroundSize: "28px 28px" }} />
+      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: (wall && wall.dark) ? "radial-gradient(#ffffff66 1px,transparent 1px)" : "radial-gradient(#ffffff 2px, transparent 2px)", backgroundSize: "30px 30px" }} />
 
       {/* ---------- FLOOR band (peeks above the counter; styled by floor upgrade) ---------- */}
       <div className={"absolute left-0 right-0 bottom-0 " + pulse("floor")} style={{ height: "38%", background: floor ? floor.bg : "linear-gradient(#ffe7d2,#ffd6bd)", borderTop: "3px solid rgba(255,255,255,0.7)", boxShadow: "inset 0 6px 10px rgba(255,255,255,0.35)", zIndex: 1 }} />
@@ -676,7 +676,7 @@ function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "
       {/* ---------- machine + helper on the BACK COUNTER, left of Ishana, sitting
            ABOVE the counter line (bottom>32%) so they stay visible, behind her
            (z2) and clear of the customer on the right ---------- */}
-      {mac && <div className={"absolute " + pulse("machine")} style={{ left: "14%", bottom: "33%", width: "16%", zIndex: 2, filter: fancy(mac.rarity) ? "drop-shadow(0 0 10px gold)" : "drop-shadow(0 3px 5px rgba(0,0,0,.15))" }}>
+      {mac && <div className={"absolute " + pulse("machine")} style={{ left: "12%", bottom: "33%", width: "16%", zIndex: 2, filter: fancy(mac.rarity) ? "drop-shadow(0 0 10px gold)" : "drop-shadow(0 3px 5px rgba(0,0,0,.15))" }}>
         <ImgOr src={ASSET.machine[mac.base]} className="w-full object-contain" fallback={<div className="flex items-center justify-center rounded-2xl" style={{ aspectRatio: "1", fontSize: 28, background: "radial-gradient(circle at 50% 40%, #ffffffcc, #e6f7ffcc)", boxShadow: "0 4px 8px rgba(0,0,0,.1)" }}>{mac.emoji}</div>} />
       </div>}
       {helper && <div className={"absolute " + (customerHappy ? "cust-happy" : "bob") + " " + pulse("helper")} style={{ left: "0%", bottom: "33%", width: "14%", zIndex: 2, filter: "drop-shadow(0 3px 5px rgba(0,0,0,.2))" }} title="Your staff">
@@ -691,7 +691,7 @@ function ShopScene({ tierIdx, world, shop, placed, equipped, pet, ishanaMood = "
           {art ? (
             <div className="relative w-full" style={{ filter: "drop-shadow(0 4px 4px rgba(0,0,0,.18))" }}><ImgOr src={art} className="w-full object-contain" fallback={<div style={{ fontSize: front ? 34 : 30 }}>{D.emoji}</div>} />{front && <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: -2, width: "55%", height: 6, background: "rgba(0,0,0,.1)", borderRadius: "50%" }} />}</div>
           ) : (
-            <div className="relative leading-none" style={{ fontSize: front ? 34 : 30, filter: "drop-shadow(0 4px 3px rgba(0,0,0,.18))" }}>{D.emoji}{front && <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: -4, width: 26, height: 7, background: "rgba(0,0,0,.12)", borderRadius: "50%" }} />}</div>
+            <div className="relative leading-none" style={{ fontSize: front ? 29 : 26, filter: "drop-shadow(0 4px 3px rgba(0,0,0,.18))" }}>{D.emoji}{front && <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: -4, width: 24, height: 6, background: "rgba(0,0,0,.12)", borderRadius: "50%" }} />}</div>
           )}
         </div>
       ); })}
@@ -775,7 +775,7 @@ function SortingMode({ level, onSolve, onMiss, locked, sounds, speak }) {
   useEffect(() => { if (locked) return; const sp = setInterval(() => { const color = Math.random() < 0.55 ? target : rand(FLAVOR_KEYS); const id = ++idRef.current; setItems((a) => [...a, { id, color, left: 8 + Math.random() * 78, dur: 2.6 + Math.random() * 1.4 }]); setTimeout(() => setItems((a) => a.filter((x) => x.id !== id)), 4200); }, 650); return () => clearInterval(sp); }, [locked, target]);
   const grab = (x) => { if (locked || done.current) return; setItems((a) => a.filter((y) => y.id !== x.id)); if (x.color === target) { const g = got + 1; setGot(g); sounds && sounds.sparkle(); if (g >= need) { done.current = true; onSolve(); } } else onMiss(); };
   const f = FLAVORS[target];
-  return (<><Bubble><p className="text-base font-bold" style={{ color: "#6b4bff" }}>Catch <span style={{ color: f.color }}>{need} {f.name}</span> scoops! 🌧️</p><p className="text-sm text-gray-500">Tap only the right colour — {got}/{need}</p></Bubble><div className="relative rounded-2xl overflow-hidden mb-1" style={{ height: 200, background: "linear-gradient(#eef9ff,#dff1ff)", border: "3px solid #b3e5ff" }}>{items.map((x) => <button key={x.id} onClick={() => grab(x)} className="absolute falling active:scale-90" style={{ left: x.left + "%", top: -50, animationDuration: x.dur + "s" }}><Scoop flavorKey={x.color} size={46} /></button>)}</div></>);
+  return (<><Bubble><p className="text-base font-bold" style={{ color: "#6b4bff" }}>Catch <span style={{ color: f.color }}>{need} {f.name}</span> scoops! 🌧️</p><p className="text-sm text-gray-500">Tap only the right colour — {got}/{need}</p></Bubble><div className="relative rounded-2xl overflow-hidden mb-1" style={{ height: 200, background: "linear-gradient(#eef9ff,#dff1ff)", border: "3px solid #b3e5ff" }}><div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center" style={{ opacity: 0.3 }}><div className="text-3xl">☁️🍦☁️</div><span className="text-xs font-black text-sky-500 mt-1">Tap the falling {f.name} scoops!</span></div>{items.map((x) => <button key={x.id} onClick={() => grab(x)} className="absolute falling active:scale-90" style={{ left: x.left + "%", top: -50, animationDuration: x.dur + "s" }}><Scoop flavorKey={x.color} size={46} /></button>)}</div></>);
 }
 function SpeedMode({ level = 1, onSolve, onMiss, locked, sounds, speak }) {
   const DUR = clamp(20 - Math.floor(level / 4), 12, 20); const [t, setT] = useState(DUR); const [order, setOrder] = useState(() => rand(FLAVOR_KEYS)); const [served, setServed] = useState(0); const done = useRef(false);
@@ -789,7 +789,7 @@ function MegaMode({ level, onSolve, locked, sounds, speak }) {
   const target = useMemo(() => (level < 14 ? 10 : level < 26 ? 15 : 20), [level]); const [tower, setTower] = useState([]);
   useEffect(() => { speak && speak("Build a " + target + " scoop tower!"); }, []); // eslint-disable-line
   const add = () => { if (locked) return; const n = [...tower, rand(FLAVOR_KEYS)]; setTower(n); sounds && sounds.plop(); if (n.length >= target) onSolve({ bonusCoins: target }); };
-  return (<><Bubble><p className="text-base font-bold" style={{ color: "#6b4bff" }}>🗼 MEGA ORDER! Build a <span className="text-pink-500">{target}-scoop</span> tower!</p><p className="text-sm text-gray-500">{tower.length} / {target}</p></Bubble><div className="relative rounded-2xl overflow-y-auto mb-2 flex items-end justify-center" style={{ height: 170, background: "linear-gradient(#fff,#fff5fa)", border: "3px solid #ffd1e3" }}><div className="scale-90"><Cone scoops={tower} size={26} max={30} /></div></div><button onClick={add} disabled={locked} className="w-full rounded-2xl py-5 text-2xl font-black text-white shadow-md active:scale-95 transition" style={{ background: "linear-gradient(#ff9f43,#ff7e1d)" }}>+ Add Scoop 🍦</button></>);
+  return (<><Bubble><p className="text-base font-bold" style={{ color: "#6b4bff" }}>🗼 MEGA ORDER! Build a <span className="text-pink-500">{target}-scoop</span> tower!</p><p className="text-sm text-gray-500">{tower.length} / {target}</p></Bubble><div className="relative rounded-2xl overflow-y-auto mb-2 flex items-end justify-center" style={{ height: 170, background: "linear-gradient(#fff,#fff5fa)", border: "3px solid #ffd1e3" }}>{tower.length === 0 && <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-center px-4 font-black" style={{ color: "#ffc2dd", fontSize: 15 }}>Tap “+ Add Scoop” to stack the tower! 🍦</div>}<div className="scale-90"><Cone scoops={tower} size={26} max={30} /></div></div><button onClick={add} disabled={locked} className="w-full rounded-2xl py-5 text-2xl font-black text-white shadow-md active:scale-95 transition" style={{ background: "linear-gradient(#ff9f43,#ff7e1d)" }}>+ Add Scoop 🍦</button></>);
 }
 const MODE_COMPONENTS = { pattern: PatternMode, counting: CountingMode, addition: AdditionMode, memory: MemoryMode, sorting: SortingMode, speed: SpeedMode, mega: MegaMode };
 
