@@ -86,19 +86,22 @@ animations (never a stable frame). React state updates are async, so `await` a
   **clap (`cust-happy`) when a customer is served**. Buying a helper **boosts coin
   earnings** (`staffMult` by rarity: +8/15/25/40%) and fires a hire celebration
   (fanfare + confetti). This gives a real reason to hire/upgrade staff.
-- **Scene zones (believable layout):** every object has a logical home — wall
-  (window, sign, `photo`/`balloons` decor) up high; **shelf** (`shelf.png` + jars,
-  `teddy`/dolls/`aquarium`) top-right; **back counter** beside Ishana (machine +
-  helper, `bottom>32%` so they sit ABOVE the counter line and aren't hidden by
-  the front counter — z2, behind Ishana); **counter top** (`sprinkle`/`topping`,
-  z6 in front); **floor** (plants/statues, z6, left side clear of Ishana/customer);
-  **pet zone** front bottom-left (z6, always ≥90% visible). Decor placement uses
-  `zonePos(item.zone)`; placed decor z-index/shadow derive from `zone`
-  (floor/counter=front z6 with shadow, wall/shelf=flat z3).
-- **Customer interaction:** `CustomerView` mirrors (`scaleX(-1)`) + leans toward
-  Ishana so it reads as facing her, shows a 🍦 **order bubble** (tail points left
-  to Ishana) while waiting, and a **heart burst + bounce** (`cust-happy`) when the
-  order is served (`customerHappy` = feedback==="correct"). New customers **slide
+- **Scene zones (everything stands on a real surface):** this is a straight-on
+  counter view, so each object has a believable home — **wall** (window, sign,
+  `frame`/`clock`/`balloons`) up high; **shelf** (`shelf.png` + jars, `teddy`/dolls)
+  top-right; a **back-counter LEDGE** (a cream surface behind Ishana) the
+  **machine + staff/helper stand ON** (`bottom:35%`, z2, behind Ishana — they used
+  to float against the wall); **counter top** (`sprinkle`/`topping`/`vase`, z6 in
+  front); **floor decor** kept SHORT & LOW (`zonePos` y≈91, painted width ~13%) so
+  it sits in front of the counter BASE without rising into the glass display;
+  **pet zone** front bottom-left (z7, ~19% wide, painted `PET_ART`). `MAX_PLACED`
+  caps clutter; placed-decor z/shadow derive from `zone`.
+- **Customer interaction:** painted customers are drawn in 3/4 facing LEFT, so
+  `CustomerView` only adds a small **lean** (no mirror) toward Ishana, a 🍦 **order
+  bubble** (tail points left to Ishana) while waiting, and a **heart burst +
+  bounce** (`cust-happy`) when served (`customerHappy` = feedback==="correct").
+  Per-animal `CUSTOMER_SCALE` keeps wide sprites from out-sizing Ishana; a ground
+  shadow keeps them planted. New customers **slide
   in** (`cust-enter`, keyed by `custKey`=roundKey). Pet hops (`pet-hop`).
 - **World-scale system (scene is tall & narrow, ~0.5 aspect):** Ishana is the
   size reference (~62% of scene height). The **counter is sized by scene HEIGHT**
